@@ -263,7 +263,7 @@
 </html>
 <script>
 // Set DEBUG = true to enable debugging and logging
-const DEBUG = true;
+const DEBUG = false;
 if (DEBUG) {
     window.onerror = function(msg, url, lineNo, columnNo, error) {
         alert(`msg: ${msg}\nurl: ${url}\nlineNo: ${lineNo}\ncolumnNo: ${columnNo}\nerror: ${error}`);
@@ -287,6 +287,7 @@ function LOG_INCOMING_TOKENS(prefix, text) {
 
 window.onload = () => {
     BaseDrawer.initialize();
+    Model.CurrentMode = Element('SELECT_MODE').selectedIndex;
     try {
         if ('onavailabilitychanged' in navigator.bluetooth) {
             navigator.bluetooth.addEventListener('availabilitychanged', async (event) => {
