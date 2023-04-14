@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поворотный стол</title>
+    <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAGLSURBVDhPjZK/isJAEMZnj3sBQcsU5ytoe2iuUFLIYV7AB7C6lzAWylUBU1j4ArERIginoqUiKtiKWOrZiLZzO3NJyB8D/mCy30x2vuwsAURMDAk9/JhOp7Ic2RNKIg1JETSKNROqqvqb6/U6DgYDDtKBfY8NgkEN7Xbbz0l7Jk8Z0Fc9TQRrlFK8yOQphBCuCsMGy+WSXGM4jgPy2G4GrKlGeD1it9vh/X6HfD7PL6LImUHTNNbUbJom68ViAdfrFcRwOMR0Op1okAQZHA4HeL3dblAulwVdiF6tPhwlit3v84VIAxSWZfEJdF0P3ZJt21RzszD7/R5Wq9X/HRiGgZlMhl8Ui0WYTCZsdDqd4Hw+Y6vV4rzb7dICH/In+xmPWadSKRCz2Qzn8zkXokgDXsmk2WyyIZ3Wo1QqAc9uNBr4e7m45TjH4xEURaGT+Hf0WanAe6Eg2IDYbrc4Go1gvV5zHqTX64larQZyVNxsNl9Wp/P9ls3yaL5BFGqQIDWTkD8OLUwul3MVwB91ljoD3WAK+AAAAABJRU5ErkJggg==" rel="icon" type="image/x-icon" />
+    <style type="text/css">
+        * {
+            font-size: 1.1rem;
+            font-family: arial
+        }
+        .container {
+	        position: relative;
+	        overflow: hidden;
+	        height: 95vh;
+        }
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.5s ease-in-out;
+        }
+        .pageConnection {
+            transform: translateX(0);
+            background-color: White;
+            z-index: 1;
+        }
+        .pageTable {
+            transform: translateX(100%);
+            background-color: White;
+            z-index: 2;
+        }
+        .active {
+            transform: translateX(0);
+            z-index: 2;
+        }
+        .ribbon-button {
+            background-color: #0254ac;
+            color: white;
+            border: none;
+            border-radius: 0px;
+            position: absolute;
+            left: 0px;
+            height: 1.7rem;
+        }
+        .ribbon-button:active {
+            background-color: #2196F3;
+        }
+        .ribbon-text {
+            font-size: 1.3rem;
+        }
+        .ribbon
+        {
+            width: 100%;
+            height: 1.7rem;
+            background: #0254ac;
+            color: white;
+            text-align: center;
+        }
+        button {
+            height: 2rem;
+            color: white;
+            background-color: #2196F3;
+            border-radius: 0.5rem;
+            border-width: 0;
+        }
+        button:active {
+            background-color:darkgray;
+            border-width: 1px;
+        }
+        button:disabled {
+            background-color:#2195f38f;
+        }
+        label {
+            font-size: 0.8rem;
+        }
+        span {
+            width: 1rem;
+        }
+        input[type="range"] {
+            width: 96%;
+            height: 1px;
+            margin: 0% 2% 0% 2%;
+        }
+        canvas {
+            display: table;
+            margin: auto;
+        }
+        .center {
+            margin: auto;
+        }
+        .width {
+            width: 100%;
+            max-width: 30rem;
+        }
+        .stop-button {
+            background-color: #FF0000;
+        }
+        .slider-labels {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            margin-bottom: 0px;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: row;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .hidden {
+            display: none;
+        }
+        .noselect {
+            -webkit-touch-callout: none;    /* iOS Safari */
+            -webkit-user-select: none;      /* Safari */
+            -khtml-user-select: none;       /* Konqueror HTML */
+            -moz-user-select: none;         /* Old versions of Firefox */
+            -ms-user-select: none;          /* Internet Explorer/Edge */
+            user-select: none;              /* Non-prefixed version, currently
+                                               supported by Chrome, Edge, Opera and Firefox */
+        }        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page pageConnection active">
+            <h1>Подключение к столу</h1>
+            <p>
+                <button class="width" type="button" id="CONNECT_BTN" onclick="Model.ConnectAsync()">Подключиться...</button>
+            </p>
+            <p>
+                <progress class="hidden width" max="100" id="PROGRESS"></progress>
+            </p>
+            <p>
+                <label class="hidden" id="ERR"></label>
+            </p>
+    </div>
+        
+    <div class="page pageTable">
+        <div class="ribbon">
+            <button class="ribbon-button" type="button" title="Disconnect" onclick="Service.Disconnect()">
+                <img title="Back" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAYAAABiDJ37AAAAAXNSR0IArs4c6QAAAFBJREFUOE+900ESACAEBdD+/Q+tsWChIUm1jYdRGMlDRMShABClhJecKJAgZfAU0oK2/Sq0gLeQghZK7sgNQzsopdpGfraULvjfw/Y63v2UCY9cMAV7foyYAAAAAElFTkSuQmCC">
+            </button>
+            <label class="ribbon-text">Поворотный стол</label>
+        </div>
+        <div>
+            <p>
+                <label class="hidden" id="ERROR"></label>
+            </p>
+            <p class="hidden" id="MODE_INFO">
+                <label class="bold">Режим: </label>
+                <label id="LABEL_INFO"></label>
+            </p>
+            <p>
+                <canvas class="hidden" id="CANVAS" width="300rem" height="300rem"
+                        onpointerdown="Model.CurrentDrawer.OnDown(event)"
+                        onpointermove="Model.CurrentDrawer.OnMove(event)"
+                        onpointerup="Model.CurrentDrawer.OnUp(event)"
+                        onpointercancel="Model.CurrentDrawer.OnLeave(event)"
+                        onpointerout="Model.CurrentDrawer.OnLeave(event)"></canvas>
+            </p>
+            <select class="width center" id="SELECT_MODE" title="Режим" aria-label="Режим" onchange="Model.CurrentMode = this.selectedIndex">
+                <option>Авто</option>
+                <option>Ручной</option>
+                <option>Безостановочный</option>
+                <option>Видео</option>
+                <option>Поворот 90°</option>
+            </select>
+            <p>
+                <button disabled class="width center" type="button" id="BTN_START" onclick="Model.RunAsync()">Старт</button>
+            </p>
+            <div class="width center" id="STEPS">
+                <p class="slider-labels">
+                    <label>Шаги</label>
+                    <Label id="STEPS_VALUE" class="bold">0</Label>
+                </p>
+                <input disabled type="range" id="STEPS_SLIDER" min="0" max="21" value="0" aria-label="Шаги" onchange="Model.ChangeSteps(this.value)" oninput="STEPS_VALUE.innerText = Steps[this.value]"/>
+            </div>
+            <div class="hidden width center" id="FREQ" class="slider">
+                <p class="slider-labels">
+                    <label id="FREQ_TITLE">Частота кадров</label>
+                    <Label id="FREQ_VALUE" class="bold">0.5</Label>
+                </p>
+                <input disabled type="range" id="FREQ_SLIDER" min="0.5" max="3.0" step="0.001" value="0.5" aria-label="Частота кадров" onchange="Model.ChangeNonstopSpeedAsync(this.value)" oninput="FREQ_VALUE.innerText = parseFloat(this.value).toFixed(2)"/>
+            </div>
+            <div class="hidden width center" id="SPEED" class="slider">
+                <p class="slider-labels">
+                    <label>Скорость</label>
+                    <Label id="SPEED_VALUE" class="bold">1</Label>
+                </p>
+                <input disabled type="range" id="SPEED_SLIDER" list="tickmark" min="-1.0" max="1.0" step="0.001" value="0" aria-label="Скорость" onchange="Model.ChangeVideoSpeedAsync(this.value)" oninput="SPEED_VALUE.innerText = Model.ToVideoSpeed(this.value)"/>
+                <datalist id="tickmark">
+                    <option>-1</option>
+                    <option>0</option>
+                    <option>1</option>
+                </datalist>                
+            </div>
+            <div class="width center" id="ACC" class="slider">
+                <p class="slider-labels">
+                    <label>Ускорение</label>
+                    <Label id="ACC_VALUE" class="bold">1</Label>
+                </p>
+                <input disabled type="range" id="ACC_SLIDER" min="1" max="10" value="1" aria-label="Ускорение" onchange="Model.ChangeAcc(this.value)" oninput="ACC_VALUE.innerText = this.value"/>
+            </div>
+            <div class="width center" id="EXPOSURE" class="slider">
+                <p class="slider-labels">
+                    <label>Экспозиция</label>
+                    <Label id="EXP_VALUE" class="bold">100</Label>
+                </p>
+                <input disabled type="range" id="EXP_SLIDER" min="1" max="30" value="1" aria-label="Экспозиция" onchange="Model.ChangeExp(this.value)" oninput="EXP_VALUE.innerText = this.value * 100"/>
+            </div>
+            <div class="width center" id="DELAY" class="slider">
+                <p class="slider-labels">
+                    <label>Задержка</label>
+                    <Label id="DELAY_VALUE" class="bold">0</Label>
+                </p>
+                <input disabled type="range" id="DELAY_SLIDER" min="0" max="50" value="0" aria-label="Задержка" onchange="Model.ChangeDelay(this.value)" oninput="DELAY_VALUE.innerText = this.value * 100"/>
+            </div>
+            <div class="hidden" id="ROTATE_BUTTONS">
+                <p class="center width button-group">
+                    <button class="width" id="BTN_LEFT" type="button" onclick="Model.LeftAsync()">&lt;&lt;</button>
+                    <span></span>
+                    <button class="width" id="BTN_RIGHT" type="button" onclick="Model.RightAsync()">&gt;&gt;</button>
+                </p>
+            </div>
+            <p>
+                <div class="hidden" id="INCR_BUTTONS">
+                    <p class="center width button-group noselect">
+                        <button class="width" id="BTN_DEC" type="button"
+                            onpointerdown="Model.BeginDeviateAsync(Deviate.Decrease)"
+                            onpointerup="Model.EndDeviate()"
+                            onpointerleave="Model.EndDeviate()">&lt;&lt;
+                        </button>
+                        <span></span>
+                        <button class="width" id="BTN_INC" type="button"
+                            onpointerdown="Model.BeginDeviateAsync(Deviate.Increase)"
+                            onpointerup="Model.EndDeviate()"
+                            onpointerleave="Model.EndDeviate()">&gt;&gt;
+                        </button>
+                    </p>
+                </div>
+            </p>
+            <p>
+                <div class="hidden" id="PHOTO_BUTTONS">
+                    <p class="center width button-group">
+                        <button class="width" id="BTN_PHOTO" type="button" onclick="Model.PhotoAsync()">Фото</button>
+                        <span></span>
+                        <button class="width" id="BTN_NEXT" type="button" onclick="Model.NextAsync()">Дальше</button>
+                    </p>
+                </div>
+            </p>
+            <p>
+                <button class="hidden width center stop-button" type="button" id="BTN_STOP" class="stop-button" onclick="Model.StopAsync()">Выход</button>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+<script>
+// Set DEBUG = true to enable debugging and logging
+const DEBUG = true;
+if (DEBUG) {
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+        alert(`msg: ${msg}\nurl: ${url}\nlineNo: ${lineNo}\ncolumnNo: ${columnNo}\nerror: ${error}`);
+        return false;
+    }
+}
+
+// Set DEBUG_POS to log incoming positions in console
+const DEBUG_POS = false;
+function LOG_INCOMING_TOKENS(prefix, text) {
+    if (DEBUG) {
+        if (text.startsWith('POS')) {
+            if (DEBUG_POS) {
+                console.log(prefix, text);
+            }
+        } else {
+            console.log(prefix, text);
+        }
+    }
+}
+
+window.onload = () => {
+    BaseDrawer.initialize();
+    try {
+        if ('onavailabilitychanged' in navigator.bluetooth) {
+            navigator.bluetooth.addEventListener('availabilitychanged', async (event) => {
+                if (!event.value) {
+                    Show(Element('ERR'), true);
+                    processError('Bluetooth недоступен');
+                    Service.Disconnect();
+                }
+            });
+        }
+    } catch(error) {
+        processError('Ваш браузер не поддерживает технологию Web Bluetooth. Используйте Google Chrome')
+    }
+}
+
+const pageConnection = document.querySelector('.pageConnection');
+const pageTable = document.querySelector('.pageTable');
+
+function gotoConnectionPage() {
+    pageTable.classList.remove('active');
+    pageConnection.classList.add('active');
+}
+
+function gotoTablePage() {
+    Model.UpdateElements();
+    pageConnection.classList.remove('active');
+    pageTable.classList.add('active');
+}
+
+const Element = (id) => { return document.getElementById(id) };
+const Show = (e, show) => { e.style.display = show ? 'block' : 'none' };
+const Enable = (e, enable) => { e.disabled = !enable };
+
+function processError(message) {
+    Service.Disconnect();
+    gotoConnectionPage();
+    Model.IsRunning = false;
+    Model.IsSoftStopping = false;
+    Show(Element('ERR'), true);
+    Element('ERR').innerText = message;
+}
+
+function getCookieValue(key) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${key}=`);
+    if (parts.length === 2) {
+        return parts.pop().split(';').shift();
+    }
+
+    return null;
+}
+
+function setCookieValue(key, value) {
+    document.cookie = `${key}=${value}; expires=Fri, 31 Dec 9999 23:59:59 GMT`;
+}
+
+const StepsLength = 22;
+const Steps = [ 2, 4, 5, 6, 8, 9, 10, 12, 15, 18, 20, 24, 30, 36, 40, 45, 60, 72, 90, 120, 180, 360 ];
+const Deviate = {
+    None: 0,
+    Increase: 1,
+    Decrease: 2
+}
+const Mode = {
+    Auto: 0,
+    Manual: 1,
+    Nonstop: 2,
+    Video: 3,
+    Rotate: 4
+}
+
+const terminator = '\n';
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+// #region Drawing classes
+toDegrees = (radians) => radians * 180.0 / Math.PI;
+toRadians = (degrees) => Math.PI * degrees / 180.0;
+
+class BaseDrawer {
+    static #canvas;
+    static #context;
+    static #center;
+    static #radius;
+    static #rect;
+
+    get Canvas() { return BaseDrawer.#canvas; }
+    get Context() { return BaseDrawer.#context; }
+    get Center() { return BaseDrawer.#center; }
+    get Radius() { return BaseDrawer.#radius; }
+    get Rect() { return BaseDrawer.#rect; }
+
+    static initialize() {
+        this.#canvas = document.querySelector('canvas');
+        this.#context = this.#canvas.getContext('2d');
+
+        const size = Math.min(this.#canvas.width, this.#canvas.height);
+        const half = size / 2;
+        this.#center = {
+            X: half,
+            Y: half
+        }
+        this.#radius = half;
+        this.#context.translate(this.#radius, this.#radius);
+        this.#rect = {
+            Left: -this.#radius,
+            Top: -this.#radius,
+            Right: this.#radius,
+            Bottom: this.#radius,
+            Width: 2 * this.#radius + 1,
+            Height: 2 * this.#radius + 1
+        }
+
+        this.#radius--;
+    }
+
+    Draw() {
+        this.Context.clearRect(this.Rect.Left, this.Rect.Top, this.Rect.Width, this.Rect.Height);
+    }
+
+    ToUnits(hundredthOfRadius) {
+        return Math.round(hundredthOfRadius * this.Radius / 100);
+    }
+
+    _DrawCircle() {
+        this.Context.beginPath();
+        this.Context.arc(0, 0, this.Radius, 0, 2 * Math.PI, false);
+
+        // Create a radial gradient
+        const gradient = this.Context.createRadialGradient(0, 0, this.Radius, 0, 0, 0);
+        // Add two color stops
+        gradient.addColorStop(0, '#C8C8C8');
+        gradient.addColorStop(1, '#ECECEC');
+        // Set the fill style and draw a rectangle
+        this.Context.fillStyle = gradient;
+
+        this.Context.fill();
+    }
+
+    _DrawBorder() {
+        this.Context.beginPath();
+        this.Context.arc(0, 0, this.Radius, 0, 2 * Math.PI, false);
+        this.Context.lineWidth = 1;
+        this.Context.strokeStyle = '#BEBEBE';
+        this.Context.stroke();
+    }
+
+    _DrawText(x, y, text, font, align) {
+        this.Context.fillStyle = 'black';
+        this.Context.font = font;
+        this.Context.textAlign = align;
+        this.Context.fillText(text, x, y);
+    }
+
+    _DrawSector(startAngle, endAngle) {
+        this.Context.beginPath();
+        this.Context.moveTo(0, 0);
+        const angle = endAngle - startAngle;
+        this.Context.arc(0, 0, this.Radius, toRadians(startAngle), toRadians(endAngle), angle < 0);
+        this.Context.lineTo(0, 0);
+        this.Context.fillStyle = '#ECECEC';
+        this.Context.fill();
+    }
+
+    _DrawArrow(startAngle, endAngle, indent, color) {
+        const angle = endAngle - startAngle;
+        if (Math.abs(angle) < 8)
+            return;
+
+        // Draw arc
+        this.Context.beginPath();
+        this.Context.arc(0, 0, this.Radius + indent, toRadians(startAngle), toRadians(endAngle), angle < 0);
+        this.Context.strokeStyle = color;
+        this.Context.stroke();
+
+        // Draw arrow
+        this.Context.fillStyle = color;
+        this.Context.beginPath();
+        if (angle > 0) {
+            let pt = this._GetCirclePt(endAngle, this.Radius + indent);
+            this.Context.moveTo(pt.X, pt.Y);
+            pt = this._GetCirclePt(endAngle - 4, this.Radius + indent + 2);
+            this.Context.lineTo(pt.X, pt.Y);
+            pt = this._GetCirclePt(endAngle - 4, this.Radius + indent - 2);
+            this.Context.lineTo(pt.X, pt.Y);
+            this.Context.closePath();
+        } else {
+            let pt = this._GetCirclePt(endAngle, this.Radius + indent);
+            this.Context.moveTo(pt.X, pt.Y);
+            pt = this._GetCirclePt(endAngle + 4, this.Radius + indent + 2);
+            this.Context.lineTo(pt.X, pt.Y);
+            pt = this._GetCirclePt(endAngle + 4, this.Radius + indent - 2);
+            this.Context.lineTo(pt.X, pt.Y);
+            this.Context.closePath();
+        }
+        this.Context.closePath();
+        this.Context.fillStyle = color;
+        this.Context.fill();
+    }
+
+    _DrawMarker(pos, color)
+    {
+        const angle = pos % 360;
+        const pt = this._GetCirclePt(angle, this.Radius - this.ToUnits(6));
+        this.Context.beginPath();
+        this.Context.arc(pt.X, pt.Y, this.ToUnits(2.5), 0, 2 * Math.PI, false);
+        this.Context.fillStyle = color;
+        this.Context.fill();
+    }
+
+    _GetCirclePt(angleDegrees, raduis)
+    {
+        return {
+            X: (Math.cos(toRadians(angleDegrees)) * raduis),
+            Y: (Math.sin(toRadians(angleDegrees)) * raduis)
+        };
+    }
+
+    _IsInsideCircle(x, y)
+    {
+        var hypotenuse = Math.sqrt(x * x + y * y);
+        return hypotenuse < this.Radius;
+    }
+
+    OnDown(event) {
+    }
+
+    OnMove(event) {
+    }
+
+    OnUp(event) {
+    }
+
+    OnLeave(event) {
+    }
+}
+
+class StepsDrawer extends BaseDrawer {
+    _DrawSector() {
+        if (Model.CurrentStep > 0) {
+            const angle = 360 / Model.Steps;
+            const anchor = angle * (Model.CurrentStep - 1);
+            super._DrawSector(anchor + Model.CurrentPos + 90, anchor + angle + 90);
+        }
+    }
+}
+
+class AutoDrawer extends StepsDrawer {
+    Draw () {
+        super.Draw();
+        super._DrawCircle();
+        super._DrawSector();
+        if (Model.CurrentStep > 0) {
+            const height = this.ToUnits(40);
+            const font = `bold ${height}px arial`;
+            super._DrawText(0, this.ToUnits(18), Model.CurrentStep, font, 'center');
+        }
+        super._DrawBorder();
+    }
+}
+
+class ManualDrawer extends StepsDrawer {
+    Draw() {
+        super.Draw();
+        super._DrawCircle();
+        super._DrawSector();
+        this._DrawMarker();
+        if (Model.CurrentStep > 0) {
+            const height = this.ToUnits(40);
+            const font = `bold ${height}px arial`;
+            super._DrawText(0, this.ToUnits(18), Model.CurrentStep, font, 'center');
+        }
+        super._DrawBorder();
+    }
+
+    _DrawMarker() {
+        if (Model.CurrentStep > 0 && Model.CurrentPos === 0) {
+            const angle = 360 / Model.Steps;
+            const anchor = angle * (Model.CurrentStep - 1);
+            super._DrawMarker(anchor + 90, '#008E00');
+        }
+    }
+}
+
+class ChangablePWMDrawer extends BaseDrawer {
+    _DrawArrows(clockwise, color)
+    {
+        if (clockwise)
+        {
+            super._DrawArrow(300, 320, this.ToUnits(8), color);
+            super._DrawArrow(125, 145, this.ToUnits(8), color);
+        }
+        else
+        {
+            super._DrawArrow(320, 300, this.ToUnits(8), color);
+            super._DrawArrow(145, 125, this.ToUnits(8), color);
+        }
+    }
+}
+
+class NonstopDrawer extends ChangablePWMDrawer {
+    Draw() {
+        super.Draw();
+        super._DrawCircle();
+
+        if (Model.CurrentStep > 0) {
+            super._DrawMarker(Model.CurrentPos + 90, '#008E00');
+            this._DrawArrows();
+            const height = this.ToUnits(40);
+            const font = `bold ${height}px arial`;
+            this._DrawText(0, this.ToUnits(18), Model.CurrentStep, font, 'center');
+        }
+
+        const height = this.ToUnits(10);
+        const font = `bold ${height}px arial`;
+        this._DrawText(-this.Radius, -this.Radius + this.ToUnits(10), `${Model.NonstopFrequency.toFixed(1)} Гц`, font, 'left');
+        super._DrawBorder();
+    }
+
+    _DrawArrows() {
+        if (Model.Deviating !== Deviate.None) {
+            const clockwise = Model.Deviating === Deviate.Increase;
+            const color = '#404040';
+            super._DrawArrows(clockwise, color);
+        }
+    }
+}
+
+class VideoDrawer extends ChangablePWMDrawer {
+    Pressed = false;
+
+    Draw() {
+        super.Draw();
+        this._DrawCircle();
+        this._DrawArrows();
+        let color = Model.IsVideoSuspended && !this.Pressed ? '#6E8E6E' : '#008E00';
+        super._DrawMarker(Model.CurrentPos + 90, color);
+        this._DrawTexts();
+        super._DrawBorder();
+    }
+
+    _DrawArrows() {
+        if (Model.IsVideoSuspended) {
+            if (Model.PreviousVideoSpeed !== 0) {
+                const clockwise = Model.PreviousVideoSpeed > 0;
+                this._DrawSuspendedArrow(clockwise);
+            }
+        } else if (Model.Deviating !== Deviate.None) {
+            const clockwise = Model.Deviating === Deviate.Increase;
+            const color = '#404040';
+            super._DrawArrows(clockwise, color);
+        }
+    }
+
+    _DrawSuspendedArrow(clockwise) {
+        const indent = this.ToUnits(20);
+        const thickness = this.ToUnits(2.4);
+        const half = this.ToUnits(1.2);
+        this.Context.beginPath();
+        let a;
+        let a1;
+        let a2;
+        let delta;
+        if (clockwise) {
+            a = 70;
+            a1 = 100;
+            delta = -0.3;
+            a2 = 110;
+        } else {
+            a = 110;
+            a1 = 80;
+            delta = +0.3;
+            a2 = 70;
+        }
+        this.Context.arc(0, 0, this.Radius - indent, toRadians(a), toRadians(a1 - delta), !clockwise);
+        let pt = this._GetCirclePt(a1 - delta, this.Radius - indent + thickness + half);
+        this.Context.lineTo(pt.X, pt.Y);
+        pt = this._GetCirclePt(a2 + delta, this.Radius - indent - thickness);
+        this.Context.lineTo(pt.X, pt.Y);
+        pt = this._GetCirclePt(a1 + delta, this.Radius - indent - 3 * thickness - half);
+        this.Context.lineTo(pt.X, pt.Y);
+        pt = this._GetCirclePt(a1, this.Radius - indent - 2 * thickness - half);
+        this.Context.lineTo(pt.X, pt.Y);
+        this.Context.arc(0, 0, this.Radius - indent - 2 * thickness, toRadians(a1), toRadians(a), clockwise);
+
+        this.Context.fillStyle = '#C0C0C0';
+        this.Context.fill();
+    }
+
+    _DrawCircle()
+    {
+        if (Model.IsVideoSuspended)
+        {
+            if (this.Pressed)
+                super._DrawCircle();
+            else
+                this._DrawSuspendedCircle();
+        }
+        else
+        {
+            if (this.Pressed)
+                this._DrawSuspendedCircle();
+            else
+                super._DrawCircle();
+        }
+    }
+
+    _DrawSuspendedCircle()
+    {
+        this.Context.beginPath();
+        this.Context.arc(0, 0, this.Radius, 0, 2 * Math.PI, false);
+        this.Context.fillStyle = '#DEDEDE';
+        this.Context.fill();
+    }
+
+    _DrawTexts()
+    {
+        if (Model.IsVideoSuspended)
+        {
+            if (Model.PreviousVideoSpeed !== 0)
+            {
+                if (!this.Pressed) {
+                    this._DrawText("ПУСК");
+                }
+                const height = this.ToUnits(10);
+                const font = `bold ${height}px arial`;
+                super._DrawText(-this.Radius, -this.Radius + this.ToUnits(10), Model.PreviousVideoSpeed, font, 'left');
+            }
+        }
+        else
+        {
+            if (this.Pressed) {
+                return;
+            } else {
+                this._DrawText("СТОП");
+            }
+        }
+    }
+
+    _DrawText(text)
+    {
+        this.Context.fillStyle = '#C0C0C0';
+        const height = this.ToUnits(40);
+        const font = `bold ${height}px arial`;
+        this.Context.font = font;
+        this.Context.textAlign = 'center';
+        this.Context.fillText(text, 0, this.ToUnits(18));
+    }
+
+    Clear()
+    {
+        this.Pressed = false;
+    }
+
+    OnDown(event) {
+        if (!this._IsInsideCircle(event)) {
+            this.Clear();
+            return;
+        }
+
+        this.Pressed = true;
+        this.Draw();
+    }
+
+    OnMove(event) {
+        if (!this._IsInsideCircle(event)) {
+            this.Clear();
+        }
+
+        this.Draw();
+    }
+
+    OnUp(event) {
+        if (this.Pressed) {
+            this.Pressed = false;
+
+            if (Model.IsVideoSuspended) {
+                Model.ResumeAsync()
+                    .then(() => this.Draw());
+            } else {
+                Model.SuspendAsync()
+                    .then(() => this.Draw());
+            }
+        }
+
+        this.Draw();
+    }
+
+    OnLeave(event) {
+        this.Clear();
+        this.Draw();
+    }
+
+    _IsInsideCircle(event) {
+        let rect = Element('CANVAS').getBoundingClientRect();
+        const x = event.clientX - rect.left - this.Radius;
+        const y = event.clientY - rect.top - this.Radius;
+
+        return super._IsInsideCircle(x, y);
+    }
+}
+
+class RotateDrawer extends BaseDrawer {
+    get StartAngle() { return Model.CurrentPos; }
+    get EndAngle() { return this._endAngle; }
+    set EndAngle(value) { this._endAngle = value; }
+    get Angle() { return this.EndAngle - this.StartAngle; }
+
+    constructor() {
+        super();
+        this._endAngle = 0;
+    }
+
+    Draw() {
+        super.Draw();
+        super._DrawCircle();
+        this._DrawSector();
+        this._DrawArrow();
+        super._DrawBorder();
+    }
+
+    Clear() {
+        this._endAngle = 0;
+    }
+
+    _DrawSector() {
+        if (this.Angle === 0) {
+            return;
+        }
+
+        super._DrawSector(this.StartAngle + 90, this.EndAngle + 90);
+    }
+
+    _DrawArrow() {
+        if (Math.abs(this.Angle) < 10) {
+            return;
+        }
+
+        super._DrawArrow(this.StartAngle + 90, this.EndAngle + 90, -this.ToUnits(8), '#404040');
+
+        const height = this.ToUnits(10);
+        const font = `bold ${height}px arial`;
+        super._DrawText(-this.Radius, -this.Radius + this.ToUnits(10), `${this.EndAngle}°`, font, 'left');
+    }
+}
+// #endregion
+
+class TableModel {
+    #steps = 24;
+    #acceleration = 7;
+    #exposure = 100;
+    #delay = 0;
+    #videoPWM = 80;
+    #NonstopFrequency = 0.5;
+    #currentMode = Mode.Auto;
+    #currentStep = 0;
+    #currentPos = 0;
+    #isRunning = false;
+    #isSoftStopping = false;
+    #isRotating = false;
+    #isPerformingManualStep = false;
+    #deviating = Deviate.None;
+    #previousVideoSpeed = 0;
+    #deviateIntervalId = 0;
+    #isSpeedEnabled = true;
+    #highVideoSpeed = 255;
+    #lowVideoSpeed = 0;
+    #prevSpeed = 0;
+
+    #drawers = [];
+
+    get Steps() { return this.#steps; }
+    set Steps(value) { this.#steps = value; }
+    get Acceleration() { return this.#acceleration; }
+    set Acceleration(value) {this.#acceleration = value; }
+    get Exposure() { return this.#exposure; }
+    set Exposure(value) { this.#exposure = value; }
+    get Delay() { return this.#delay; }
+    set Delay(value) { this.#delay = value; }
+    get VideoPWM() { return this.#videoPWM; }
+    set VideoPWM(value) { this.#videoPWM = value; }
+    get NonstopFrequency() { return this.#NonstopFrequency; }
+    set NonstopFrequency(value) { this.#NonstopFrequency = value; }
+    get CurrentMode() { return this.#currentMode; }
+    set CurrentMode(value) { this.#currentMode = value; }
+    get CurrentStep() { return this.#currentStep; }
+    set CurrentStep(value) {
+        if (this.#currentStep !== value) {
+            this.#currentStep = value;
+            this.Drawers[this.CurrentMode].Draw();
+        }
+    }
+    get CurrentPos() { return this.#currentPos; }
+    set CurrentPos(value) {
+        if (this.#currentPos !== value) {
+            this.#currentPos = value;
+            this.Drawers[this.CurrentMode].Draw();
+        }
+    }
+    get IsRunning() { return this.#isRunning; }
+    set IsRunning(value) {
+        if (this.#isRunning !== value) {
+            this.#isRunning = value;
+            this.UpdateElements();
+        }
+    }
+    get IsSoftStopping() { return this.#isSoftStopping; }
+    set IsSoftStopping(value) {
+        this.#isSoftStopping = value;
+        Element('BTN_STOP').innerText = value ? 'Остановка' : 'Выход';
+    }
+    get IsRotating() { return this.#isRotating; }
+    set IsRotating(value) { this.#isRotating = value; }
+    get IsPerformingManualStep() { return this.#isPerformingManualStep; }
+    set IsPerformingManualStep(value) { this.#isPerformingManualStep = value; }
+    get PreviousVideoSpeed() { return this.#previousVideoSpeed; }
+    get Deviating() { return this.#deviating; }
+    set Deviating(value) { this.#deviating = value; }
+    get IsSpeedEnabled() { return this.#isSpeedEnabled; }
+    set IsSpeedEnabled(value) { this.#isSpeedEnabled = value; }
+    get HighVideoSpeed() { return this.#highVideoSpeed; }
+    set HighVideoSpeed(value) { this.#highVideoSpeed = value; }
+    get LowVideoSpeed() { return this.#lowVideoSpeed; }
+    set LowVideoSpeed(value) { this.#lowVideoSpeed = value; }
+    get IsVideoSuspended() { return this.VideoSpeed === 0 };
+    get VideoSpeed() { return this.ToVideoSpeed(Element('SPEED_SLIDER').value); }
+    set VideoSpeed(value) {
+        Element('SPEED_SLIDER').value = this.ToVideoSliderPos(value);
+        Element('SPEED_VALUE').innerText = this.ToVideoSpeed(Element('SPEED_SLIDER').value);
+    }
+    get PreviousVideoSpeed() { return this.#prevSpeed; }
+    set PreviousVideoSpeed(value) {this.#prevSpeed = value; }
+
+    get Drawers() { return this.#drawers; }
+    get CurrentDrawer() { return this.Drawers[this.CurrentMode]; }
+
+    constructor() {
+        this.Drawers.push(new AutoDrawer(), new ManualDrawer(), new NonstopDrawer(), new VideoDrawer(), new RotateDrawer());
+    }
+
+    async ConnectAsync() {
+        Show(Element('ERR'), false);
+        Show(Element('PROGRESS'), true);
+        Element('PROGRESS').value = 0;
+        Enable(Element('CONNECT_BTN'), false);
+
+        const success = await Service.ConnectAsync(Element('PROGRESS'));
+        Show(Element('PROGRESS'), false);
+        Enable(Element('CONNECT_BTN'), true);
+        if (success) {
+            gotoTablePage();
+        }
+    }
+
+    UpdateElements() {
+        this.EnableElements();
+        Element('LABEL_INFO').innerText = this.GetModeInfo();
+
+        if (this.IsRunning) {
+            Element('MODE_INFO').style.display = 'inline';
+            Show(Element('CANVAS'), true);
+            Show(Element('SELECT_MODE'), false);
+            Show(Element('BTN_START'), false);
+            Show(Element('BTN_STOP'), true);
+
+            switch (this.CurrentMode) {
+                case Mode.Auto:
+                    Show(Element('ROTATE_BUTTONS'), false);
+                    Show(Element('INCR_BUTTONS'), false);
+                    Show(Element('PHOTO_BUTTONS'), false);
+                    Show(Element('STEPS'), false);
+                    Show(Element('FREQ'), false);
+                    Show(Element('SPEED'), false);
+                    Show(Element('ACC'), true);
+                    Show(Element('EXPOSURE'), true);
+                    Show(Element('DELAY'), true);
+                    break;
+                case Mode.Manual:
+                    Show(Element('ROTATE_BUTTONS'), false);
+                    Show(Element('INCR_BUTTONS'), false);
+                    Show(Element('PHOTO_BUTTONS'), true);
+                    Show(Element('STEPS'), false);
+                    Show(Element('FREQ'), false);
+                    Show(Element('SPEED'), false);
+                    Show(Element('ACC'), true);
+                    Show(Element('EXPOSURE'), true);
+                    Show(Element('DELAY'), false);
+                    break;
+                case Mode.Nonstop: 
+                    Show(Element('ROTATE_BUTTONS'), false);
+                    Show(Element('INCR_BUTTONS'), true);
+                    Show(Element('PHOTO_BUTTONS'), false);
+                    Show(Element('STEPS'), false);
+                    Show(Element('FREQ'), true);
+                    Show(Element('SPEED'), false);
+                    Show(Element('ACC'), false);
+                    Show(Element('EXPOSURE'), false);
+                    Show(Element('DELAY'), false);
+                    break;
+                case Mode.Video:
+                    Show(Element('ROTATE_BUTTONS'), false);
+                    Show(Element('INCR_BUTTONS'), true);
+                    Show(Element('PHOTO_BUTTONS'), false);
+                    Show(Element('STEPS'), false);
+                    Show(Element('FREQ'), false);
+                    Show(Element('SPEED'), true);
+                    Show(Element('ACC'), true);
+                    Show(Element('EXPOSURE'), false);
+                    Show(Element('DELAY'), false);
+                    break;
+                case Mode.Rotate:
+                    Show(Element('ROTATE_BUTTONS'), true);
+                    Show(Element('INCR_BUTTONS'), false);
+                    Show(Element('PHOTO_BUTTONS'), false);
+                    Show(Element('STEPS'), false);
+                    Show(Element('FREQ'), false);
+                    Show(Element('SPEED'), false);
+                    Show(Element('ACC'), false);
+                    Show(Element('EXPOSURE'), false);
+                    Show(Element('DELAY'), false);
+                    break;
+            }
+        } else {
+            Show(Element('SELECT_MODE'), true);
+            Show(Element('BTN_START'), true);
+            Show(Element('STEPS'), true);
+            Show(Element('FREQ'), false);
+            Show(Element('SPEED'), false);
+            Show(Element('ACC'), true);
+            Show(Element('EXPOSURE'), true);
+            Show(Element('DELAY'), true);
+            Show(Element('MODE_INFO'), false);
+            Show(Element('CANVAS'), false);
+            Show(Element('ROTATE_BUTTONS'), false);
+            Show(Element('INCR_BUTTONS'), false);
+            Show(Element('PHOTO_BUTTONS'), false);
+            Show(Element('BTN_STOP'), false);
+        }
+    }
+
+    EnableElements() {
+        const enable = Service.Connected;
+        Enable(Element('SELECT_MODE'), enable);
+        Enable(Element('BTN_START'), enable);
+        Enable(Element('STEPS_SLIDER'), enable);
+        Enable(Element('FREQ_SLIDER'), enable);
+        Enable(Element('SPEED_SLIDER'), enable && this.IsSpeedEnabled);
+        Enable(Element('BTN_DEC'), enable && this.IsSpeedEnabled);
+        Enable(Element('BTN_INC'), enable && this.IsSpeedEnabled);
+        Enable(Element('ACC_SLIDER'), enable);
+        Enable(Element('ACC_SLIDER'), enable);
+        Enable(Element('EXP_SLIDER'), enable);
+        Enable(Element('DELAY_SLIDER'), enable);
+    }
+
+    GetModeInfo() {
+        let result = this.GetCurrentModeText();
+        if (this.CurrentMode === Mode.Auto ||
+            this.CurrentMode === Mode.Manual ||
+            this.CurrentMode === Mode.Nonstop) {
+                result += ` (${this.Steps})`;
+            }
+
+        return result;
+    }
+
+    GetCurrentModeText() {
+        switch (this.CurrentMode) {
+            case Mode.Auto:
+                return 'Авто';
+            case Mode.Manual:
+                return 'Ручной';
+            case Mode.Nonstop: 
+                return 'Безостановочный';
+            case Mode.Video:
+                return 'Видео';
+            case Mode.Rotate:
+                return 'Поворот 90°';
+        }
+    }
+
+    GetCurrentModeCommand() {
+        switch (this.CurrentMode) {
+            case Mode.Auto:
+                return Service.Commands.RunAutoMode;
+            case Mode.Manual:
+                return Service.Commands.RunManualMode;
+            case Mode.Nonstop: 
+                return Service.Commands.RunNonstopMode;
+            case Mode.Video:
+                return Service.Commands.RunVideoMode;
+            case Mode.Rotate:
+                return Service.Commands.RunFreeMovement;
+        }
+    }
+
+    async RunAsync() {
+        if (Service.Busy) {
+            return;
+        }
+
+        const Run = async () => await Service.RunAsync(this.GetCurrentModeCommand(), this.#ListeningHandler);
+        switch (Model.CurrentMode)
+        {
+            case Mode.Nonstop:
+                await this.#InitNonstopAsync();
+                this.IsRunning = await Run();
+                break;
+            case Mode.Video:
+                await this.#InitVideopAsync();
+                this.IsRunning = await Run();
+                break;
+            default:
+                this.IsRunning = await Run();
+                break;
+        }
+
+        if (!this.IsRunning) {
+            Service.EndListening();
+        } else {
+            this.CurrentDrawer.Draw();
+        }
+    }
+
+    #ListeningHandler(event) {
+        const TryParse = (text) => {
+            const result = parseInt(text);
+            return isNaN(result) ? 0 : result;
+        }
+
+        const str = decoder.decode(event.target.value);
+        const text = str.replace(terminator, '');
+        LOG_INCOMING_TOKENS('[ListeningHandler] ->', text);
+        if (text.startsWith(Service.Commands.Step)) {
+            Model.CurrentStep = TryParse(text.substring(5));
+            if (Model.CurrentMode === Mode.Manual) {
+                Model.IsPerformingManualStep = false;
+                Model.CurrentPos = 0;
+            }
+        } else if (text.startsWith(Service.Commands.Position)) {
+            Model.CurrentPos = TryParse(text.substring(4));
+        } else if (text === 'END') {
+            Model.CurrentStep = 0;
+            Model.CurrentPos = 0;
+            Model.IsSoftStopping = false;
+            switch (Model.CurrentMode) {
+                case Mode.Manual:
+                    Service.EndListening();
+                    Model.IsPerformingManualStep = false;
+                    Model.IsRunning = false;
+                    break;
+                case Mode.NonStop:
+                Service.EndListening();
+                    Model.IsRunning = false;
+                    break;
+                case Mode.Rotate:
+                    // final drawing
+                    Model.CurrentDrawer.Clear();
+                    Model.CurrentDrawer.Draw();
+                    Model.IsRotating = false;
+                    break;
+                default:
+                    Service.EndListening();
+                    Model.IsRunning = false;
+                    break;
+            }
+        }
+    }
+
+    async #InitNonstopAsync() {
+        // To avoid bugs in settings Maximum and Minimum restore defaults at first
+        Element('FREQ_SLIDER').min = 0.5;
+        Element('FREQ_SLIDER').max = 3.0;
+    
+        const from = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetLowNonstopFrequency);
+        const to = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetHighNonstopFrequency);
+        const value = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetRealNonstopFrequency);
+        if (this.#AreNonstopValuesValid(from, to, value)) {
+            this.IsSpeedEnabled = true;
+            this.LowNonstopFrequency = from;
+            this.HighNonstopFrequency = to;
+            this.NonstopFrequency = value;
+        } else {
+            this.IsSpeedEnabled = false;
+            const current = value === null ? 0.5 : value;
+            if (current <= 0.5) {
+                this.LowNonstopFrequency = current;
+                this.HighNonstopFrequency = 3.0;
+            } else if (current >= 3.0) {
+                this.LowNonstopFrequency = 0.5;
+                this.HighNonstopFrequency = current;
+            }
+            this.NonstopFrequency = current;
+        }
+
+        Element('FREQ_SLIDER').min = this.LowNonstopFrequency;
+        Element('FREQ_SLIDER').max = this.HighNonstopFrequency;
+        Element('FREQ_SLIDER').value = this.NonstopFrequency;
+        Element('FREQ_TITLE').innerText = this.IsSpeedEnabled
+            ? `Частота кадров (${this.LowNonstopFrequency.toFixed(1)}-${this.HighNonstopFrequency.toFixed(1)})`
+            : "Частота кадров";
+        Element('FREQ_VALUE').innerText = Model.NonstopFrequency.toFixed(2);
+    }
+
+    #AreNonstopValuesValid(from, to, value) {
+        if (from === null || to === null || value === null)
+                return false;
+
+        if (from <= 0 || to <= 0 || from == to)
+            return false;
+
+        if (value == 0)
+            return true;
+
+        return from < to && from <= value && value <= to;
+    }
+
+    async #InitVideopAsync() {
+        const from = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetLowVideoPWM);
+        const to = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetHighVideoPWM);
+        const value = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetVideoPWM);
+        if (this.#AreVideoValuesValid(from, to, value)) {
+            this.IsSpeedEnabled = true;
+            this.HighVideoSpeed = to;
+            this.LowVideoSpeed = from;
+            this.VideoSpeed = value;
+        } else {
+            this.IsSpeedEnabled = false;
+            this.HighVideoSpeed = 255;
+            this.LowVideoSpeed = 50;
+        }
+    }
+
+    #AreVideoValuesValid(from, to, value)
+    {
+        if (from === null || to === null || value === null)
+            return false;
+
+        if (from <= 0 || to <= 0)
+            return false;
+
+        if (value === 0)
+            return true;
+
+        var absSpeed = Math.abs(value);
+        return from < to && from <= absSpeed && absSpeed <= to;
+    }
+
+    ToVideoSpeed(sliderPos)
+    {
+        let count = this.HighVideoSpeed - this.LowVideoSpeed + 1;
+        let result = Math.round(sliderPos * count);
+
+        if (result === 0)
+            return 0;
+        else if (result > 0)
+            result += this.LowVideoSpeed - 1;
+        else
+            result -= this.LowVideoSpeed - 1;
+
+        return Math.round(result);
+    }
+
+    ToVideoSliderPos(speed)
+    {
+        if (speed === 0)
+            return 0.0;
+
+        var count = this.HighVideoSpeed - this.LowVideoSpeed + 1;
+        if (speed > 0)
+            speed -= this.LowVideoSpeed - 1;
+        else
+            speed += this.LowVideoSpeed - 1;
+
+        return speed / count;
+    }
+
+    async SuspendAsync() {
+        if (this.IsVideoSuspended) {
+            return;
+        }
+
+        if (await Service.SendCommandAsync(Service.Commands.ChangePWM + '0')) {
+            this.PreviousVideoSpeed = this.VideoSpeed;
+            this.VideoSpeed = 0;
+            setCookieValue('Vpwm', this.VideoSpeed);
+        }
+    }
+
+    async ResumeAsync() {
+        if (!this.IsVideoSuspended || this.PreviousVideoSpeed === 0) {
+            return;
+        }
+
+        if (await Service.SendCommandAsync(Service.Commands.ChangePWM + this.PreviousVideoSpeed)) {
+            this.VideoSpeed = this.PreviousVideoSpeed;
+            setCookieValue('Vpwm', this.VideoSpeed);
+            this.PreviousVideoSpeed = 0;
+        }
+    }
+
+    async StopAsync() {
+        if (Service.Busy || !this.IsRunning) {
+            return;
+        }
+
+        const HardStop = async () => {
+            return await Service.SendCommandAsync(Service.Commands.Stop);
+        };
+
+        const SoftStop = async () => {
+            return await Service.SendCommandAsync(Service.Commands.SoftStop);
+        }
+
+        if (this.CurrentMode === Mode.Video) {
+            if (!this.IsSoftStopping) {
+                this.IsSoftStopping = true;
+                if (!await SoftStop()) {
+                    await HardStop();
+                    this.IsRunning = false;
+                    this.IsSoftStopping = false;
+                    return;
+                }
+                
+                setTimeout(() => {
+                    // If table is still running and we are waiting for soft stop
+                    if (Model.IsRunning && Model.IsSoftStopping) {
+                        Service.EndListening();
+                        Model.IsRunning = false;
+                        Model.IsSoftStopping = false;
+                        processError('Не удалось дождаться полной остановки стола');
+                    }
+                }, 5000);
+            } else {
+                await HardStop();
+                this.IsRunning = false;
+                this.IsSoftStopping = false;
+            }
+        } else {
+            await HardStop();
+            this.IsRunning = false;
+        }
+    }
+
+    async BeginDeviateAsync(deviate) {
+        if (Model.Deviating !== Deviate.None || Service.Busy) {
+            return;
+        }
+
+        Model.Deviating = deviate;
+
+        // First call to DeviateAsync
+        if (!await this.DeviateAsync()) {
+            this.EndDeviate();
+            return;
+        }
+
+        // Next use recursive setTimeout() pattern and call Deviate() repeatedly
+        (function loop() {
+            Model.#deviateIntervalId = setTimeout(async () => {
+                if (!Service.Busy) {
+                    if (!await Model.DeviateAsync()) {
+                        Model.EndDeviate();
+                        return;
+                    }
+                }
+                loop();
+            }, 100);
+        })();
+    }
+
+    async DeviateAsync() {
+        switch (this.Deviating)
+        {
+            case Deviate.Increase:
+                if (!await this.IncreasePWMAsync()) {
+                    return false;
+                }
+                break;
+            case Deviate.Decrease:
+                if (!await this.DecreasePWMAsync()) {
+                    return false;
+                }
+                break;
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+    async IncreasePWMAsync() {
+        if (!await Service.SendCommandAsync(Service.Commands.IncreasePWM)) {
+            return false;
+        }
+
+        switch (this.CurrentMode) {
+            case Mode.Nonstop:
+                await this.#ConformNonstopFrequencyAsync();
+                break;
+            case Mode.Video:
+                if (this.IsVideoSuspended) {
+                    this.VideoSpeed = this.LowVideoSpeed;
+                    Model.CurrentDrawer.Draw();
+                } else {
+                    if (this.VideoSpeed === -this.LowVideoSpeed) {
+                        this.VideoSpeed = 0; // suspend
+                        this.PreviousVideoSpeed = 0;
+                        Model.CurrentDrawer.Draw();
+                    } else {
+                        this.VideoSpeed = this.VideoSpeed + 1; // sketch increases PWM by 1
+                    }
+                }
+                setCookieValue('Vpwm', this.VideoSpeed);
+                break;
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+    async DecreasePWMAsync() {
+        if (!await Service.SendCommandAsync(Service.Commands.DecreasePWM)) {
+            return false;
+        }
+
+        switch (this.CurrentMode) {
+            case Mode.Nonstop:
+                await this.#ConformNonstopFrequencyAsync();
+                break;
+            case Mode.Video:
+                if (this.IsVideoSuspended) {
+                    this.VideoSpeed = -this.LowVideoSpeed;
+                    Model.CurrentDrawer.Draw();
+                } else {
+                    if (this.VideoSpeed === this.LowVideoSpeed) {
+                        this.VideoSpeed = 0; // suspend
+                        this.PreviousVideoSpeed = 0;
+                        Model.CurrentDrawer.Draw();
+                    } else {
+                        this.VideoSpeed = this.VideoSpeed - 1; // sketch decreases PWM by 1
+                    }
+                }
+                setCookieValue('Vpwm', this.VideoSpeed);
+                break;
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+    EndDeviate() {
+        if (this.Deviating === Deviate.None) {
+            return;
+        }
+
+        clearTimeout(this.#deviateIntervalId);
+        this.Deviating = Deviate.None;
+    }
+    
+    async PhotoAsync() {
+        if (!await Service.SendCommandAsync(Service.Commands.Shutter)) {
+            processError('Стол не может выполнить команду');
+        }
+    }
+
+    async NextAsync() {
+        if (Model.IsPerformingManualStep) {
+            return;
+        }
+
+        this.ListeningHandler = this.#ListeningHandler;
+        if (!await Service.SendCommandAsync(Service.Commands.Next)) {
+            processError('Стол не может выполнить команду');
+            this.ListeningHandler = null;
+        } else {
+            Model.IsPerformingManualStep = true;
+        }
+    }
+
+    async LeftAsync() {
+        if (!Model.IsRotating) {
+            await this.RotateAsync(90);
+        }
+    }
+
+    async RightAsync() {
+        if (!Model.IsRotating) {
+            await this.RotateAsync(-90);
+        }
+    }
+
+    async RotateAsync(angle) {
+        Model.IsRotating = true;
+        this.ListeningHandler = this.#ListeningHandler;
+        Model.CurrentDrawer.EndAngle = angle;
+        Model.CurrentDrawer.Draw();
+        if (!await Service.SendCommandAsync(Service.Commands.FreeMovement + angle)) {
+            processError('Стол не может выполнить команду');
+
+            this.ListeningHandler = null;
+            Model.IsRotating = false;
+            Model.CurrentDrawer.Clear();
+            return;
+        }
+    }
+
+    ChangeSteps(value) {
+        const ReflectChanges = () => {
+            value = Steps.findIndex((e) => e === Model.Steps);
+            Element('STEPS_SLIDER').value = value;
+            Element('STEPS_VALUE').innerText = Model.Steps;
+        }
+        const Set = (value) => {
+            Model.Steps = value;
+            setCookieValue('Steps', value);
+            ReflectChanges();
+        }
+        const Refuse = () => {
+            // Restore old steps
+            ReflectChanges();
+        }
+
+        if (Service.Busy) {
+            Refuse();
+            return;
+        }
+
+        value = Steps[value];
+        Service.SendCommandAsync(Service.Commands.SetSteps + " " + value)
+            .then(result => result ? Set(value) : Refuse())
+            .catch(Refuse);
+    }
+
+    async ChangeNonstopSpeedAsync(value) {
+        const SetAsync = async (value) => {
+            if (!await Model.#ConformNonstopFrequencyAsync()) {
+                Refuse();
+            }
+        }
+        const Refuse = () => {
+            // Restore old frequency
+            const oldFrequency = getCookieValue('Nfreq');
+            Model.NonstopFrequency = oldFrequency;
+            Element('FREQ_SLIDER').value = Model.NonstopFrequency;
+            Element('FREQ_VALUE').innerText = Model.NonstopFrequency.toFixed(2);
+        }
+
+        if (Service.Busy) {
+            Refuse();
+            return;
+        }
+
+        Service.SendCommandAsync(Service.Commands.ChangeNonstopFrequency + value)
+            .then(async (result) => result ? await SetAsync(value) : Refuse())
+            .catch(() => Refuse());
+    }
+
+    async #ConformNonstopFrequencyAsync() {
+        if (!Model.IsSpeedEnabled)
+            return false;
+
+        const value = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetRealNonstopFrequency);
+        if (value === null)
+            return false;
+
+        Model.NonstopFrequency = value;
+        setCookieValue('Nfreq', Model.NonstopFrequency);
+        Element('FREQ_SLIDER').value = Model.NonstopFrequency;
+        Element('FREQ_VALUE').innerText = Model.NonstopFrequency.toFixed(2);
+
+        return true;
+    }
+
+    async ChangeVideoSpeedAsync(value) {
+        const Set = (value) => {
+            Model.VideoSpeed = Model.ToVideoSpeed(value);
+            setCookieValue('Vpwm', this.VideoSpeed);
+        }
+        const Refuse = () => {
+            // Restore old speed
+            const oldSpeed = getCookieValue('Vpwm');
+            Model.VideoSpeed = oldSpeed;
+        }
+
+        if (Service.Busy) {
+            Refuse();
+            return;
+        }
+
+        Service.SendCommandAsync(Service.Commands.ChangePWM + this.ToVideoSpeed(value))
+            .then((result) => result ? Set(value) : Refuse())
+            .catch(() => Refuse());
+    }
+
+    ChangeAcc(value) {
+        const ReflectChanges = () => {
+            Element('ACC_SLIDER').value = Model.Acceleration;
+            Element('ACC_VALUE').innerText = Model.Acceleration;
+        }
+        const Set = (value) => {
+            Model.Acceleration = value;
+            setCookieValue('Acceleration', value);
+            ReflectChanges();
+        };
+        const Refuse = () => {
+            // Restore old acc
+            ReflectChanges();
+        }
+
+        if (Service.Busy) {
+            Refuse();
+            return;
+        }
+
+        Service.SendCommandAsync(Service.Commands.SetAcceleration + " " + value)
+            .then(result => result ? Set(value) : Refuse())
+            .catch(Refuse);
+    }
+
+    ChangeExp(value) {
+        const ReflectChanges = () => {
+            Element('EXP_SLIDER').value = Model.Exposure / 100;
+            Element('EXP_VALUE').innerText = Model.Exposure;
+        }
+        const Set = (value) => {
+            Model.Exposure = value;
+            setCookieValue('Exposure', value);
+            ReflectChanges();
+        }
+        const Refuse = () => {
+            // Restore old exp
+            ReflectChanges();
+        }
+
+        if (Service.Busy) {
+            Refuse();
+            return;
+        }
+
+        value *= 100;
+        Service.SendCommandAsync(Service.Commands.SetExposure + " " + value)
+            .then(result => result ? Set(value) : Refuse())
+            .catch(Refuse);
+    }
+
+    ChangeDelay(value) {
+        const ReflectChanges = () => {
+            Element('DELAY_SLIDER').value = Model.Delay / 100;
+            Element('DELAY_VALUE').innerText = Model.Delay;
+        }
+        const Set = (value) => {
+            Model.Delay = value;
+            setCookieValue('Delay', value);
+            ReflectChanges();
+        };
+        const Refuse = () => {
+            // Restore old delay
+            ReflectChanges();
+        };
+
+        if (Service.Busy) {
+            Refuse();
+            return;
+        }
+
+        value *= 100;
+        Service.SendCommandAsync(Service.Commands.SetDelay + " " + value)
+            .then(result => result ? Set(value) : Refuse())
+            .catch(Refuse);
+    }    
+}
+
+const Model = new TableModel();
+
+class BluetoothService {
+    #connected = false;
+    #device = null;
+    #server = null;
+    #updatesCharacteristic = null;
+    #writeCharacteristic = null;
+    // callback to listen after sending command
+    #commandHandler = null;
+    // callback to listen during running
+    #listeningHandler = null;
+    #cancellation = false;
+    #busy = false;
+
+    //See https://github.com/andrey-val-rodin/RotatingTable.Xamarin/blob/master/RotatingTable.Xamarin/RotatingTable.Xamarin/Models/Commands.cs
+    #commands = {
+        Status                  : "STATUS",
+        Ready                   : "READY",
+        Running                 : "RUNNING",
+        Busy                    : "BUSY",
+        End                     : "END",
+        OK                      : "OK",
+        Error                   : "ERR",
+        GetClient               : "GET CLIENT",
+        None                    : "NONE",
+        Bluetooth               : "BLE",
+        Browser                 : "BROWSER",
+        EstablishConn           : "ECONN",
+        GetSteps                : "GET STEPS",
+        Step                    : "STEP ",
+        GetAcceleration         : "GET ACC",
+        GetExposure             : "GET EXP",
+        GetDelay                : "GET DELAY",
+        GetVideoPWM             : "GET VPWM",
+        GetLowVideoPWM          : "GET LVPWM",
+        GetHighVideoPWM         : "GET HVPWM",
+        GetNonstopFrequency     : "GET NFREQ",
+        GetLowNonstopPWM        : "GET LNPWM",
+        GetHighNonstopPWM       : "GET HNPWM",
+        GetLowNonstopFrequency  : "GET LNFREQ",
+        GetHighNonstopFrequency : "GET HNFREQ",
+        GetRealNonstopFrequency : "GET RNFREQ",
+        SetAcceleration         : "SET ACC",
+        SetSteps                : "SET STEPS",
+        SetExposure             : "SET EXP",
+        SetDelay                : "SET DELAY",
+        SetVideoPWM             : "SET VPWM",
+        SetNonstopFrequency     : "SET NFREQ",
+        Position                : "POS ",
+        GetMode                 : "GET MODE",
+        RunAutoMode             : "RUN AUTO",
+        RunManualMode           : "RUN MANUAL",
+        RunNonstopMode          : "RUN NS",
+        RunVideoMode            : "RUN VIDEO",
+        RunFreeMovement         : "RUN FM",
+        FreeMovement            : "FM ",
+        Shutter                 : "SHUTTER",
+        Next                    : "NEXT",
+        Stop                    : "STOP",
+        SoftStop                : "SOFTSTOP",
+        IncreasePWM             : "INCPWM",
+        DecreasePWM             : "DECPWM",
+        ChangePWM               : "CHANGEPWM ",
+        ChangeNonstopFrequency  : "CHANGENFREQ ",
+        Unknown                 : "UNKNOWN",
+    }
+
+    get Connected() { return this.#connected; }
+    get Device() { return this.#device; }
+    get Commands() { return this.#commands; }
+    get Cancellation() { return this.#cancellation; }
+    set Cancellation(value) { this.#cancellation = value; }
+    get Busy() { return this.#busy; }
+
+    async ConnectAsync(progress) {
+        this.Cancellation = false;
+        let success = false;
+        try {
+            await this.#ConnectToDeviceAsync();
+            if (!this.Device) {
+                return;
+            }
+            if (this.Cancellation) {
+                return;
+            }
+            progress.value = 25;
+
+            if (!await this.#LoadCharacteristicsAsync()) {
+                processError('Характеристика не найдена');
+                return;
+            }
+            if (this.Cancellation) {
+                return;
+            }
+            progress.value = 50;
+
+            if (!await this.#CheckStatusAsync()) {
+                return;
+            }
+            if (this.Cancellation) {
+                return;
+            }
+            progress.value = 70;
+
+            if (!await this.#SetConfigAsync()) {
+                return;
+            }
+            progress.value = 100;
+
+            success = true;
+        } catch (error) {
+            processError(error.message);
+        } finally {
+            this.#connected = success;
+            this.Cancellation = false;
+            if (!success) {
+                this.Disconnect();
+            }
+        }
+
+        return success;
+    }
+
+    Disconnect() {
+        if (this.Device) {
+            this.Device.gatt.disconnect();
+        }
+        this.EndListening();
+        this.#device = null;
+        this.#connected = false;
+        this.#updatesCharacteristic = null;
+        this.#writeCharacteristic = null;
+    }
+
+    async #ConnectToDeviceAsync() {
+        this.#device = await navigator.bluetooth.requestDevice({
+                filters: [{namePrefix: 'Rotating'}],
+                optionalServices: [0xffe0]});
+
+        this.#server = await this.Device.gatt.connect();
+        this.Device.addEventListener('gattserverdisconnected', (event) => {
+            processError('Соединение со столом разорвано');
+        });
+    }
+
+    async #LoadCharacteristicsAsync() {
+        const service = await this.#server.getPrimaryService(0xffe0);
+        this.#updatesCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+        this.#writeCharacteristic   = await service.getCharacteristic('0000ffe2-0000-1000-8000-00805f9b34fb');
+
+        if (!this.#updatesCharacteristic || !this.#writeCharacteristic) {
+            return false;
+        }
+
+        this.#updatesCharacteristic.addEventListener('characteristicvaluechanged', (event) => {
+            if (this.#commandHandler !== null) {
+                let result = this.#commandHandler(event);
+                if (result) {
+                    return;
+                }
+            }
+
+            if (this.#listeningHandler !== null) {
+                this.#listeningHandler(event);
+            }
+        });
+        await this.#updatesCharacteristic.startNotifications();
+
+        return true;
+    }
+
+    async #CheckStatusAsync() {
+        const GetStatus = async () => {
+            return await Service.#SendTokenAsync(Service.Commands.Status,
+                [Service.Commands.Ready, Service.Commands.Running, Service.Commands.Busy]);
+        };
+        const Stop = async () => {
+            return await Service.SendCommandAsync(this.Commands.Stop);
+        };
+
+        let response = await GetStatus();
+        if (response === this.Commands.Running) {
+            if (confirm('Соединение установлено, но стол находится в процессе работы.\n\nЗавершить?')) {
+                if( !await Stop()) {
+                    // Probably table is alredy finished working
+                    response = await GetStatus();
+                    if (response !== this.Commands.Ready) {
+                        processError('Перезагрузите стол и повторите попытку подключения позже');
+                        return false;
+                    }
+                }
+                
+                response = await GetStatus();
+            } else {
+                processError('Нет соединения со столом');
+                return false;
+            }
+        } else if (response === this.Commands.Busy) {
+            // Try to stop and then ask table for status again
+            if( !await Stop()) {
+                processError('Перезагрузите стол и повторите попытку подключения позже');
+                return false;
+            }
+
+            response = await GetStatus();
+        }
+
+        switch (response)
+        {
+            case this.Commands.Ready:
+                return true;
+            case this.Commands.Busy:
+            case this.Commands.Running:
+                processError('Cтол находится в процессе работы');
+                return false;
+            case null:
+                processError("Не удалось получить текущий статус стола");
+                return false;
+            default:
+                processError(`Неизвестный ответ стола: ${response}`);
+                return false;
+        }
+    }
+
+    async #SetConfigAsync() {
+        return await this.#SetStepsAsync(parseInt(getCookieValue('Steps'))) &&
+            await this.#SetAccelerationAsync(parseInt(getCookieValue('Acceleration'))) &&
+            await this.#SetExposureAsync(parseInt(getCookieValue('Exposure'))) &&
+            await this.#SetDelayAsync(parseInt(getCookieValue('Delay'))) &&
+            await this.#SetVideoPWMAsync(parseInt(getCookieValue('Vpwm'))) &&
+            await this.#SetNonstopFrequencyAsync(parseFloat(getCookieValue('Nfreq')));
+    }
+
+    async #SetStepsAsync(steps) {
+        if (steps === null || isNaN(steps)) {
+            steps = Model.Steps;
+        }
+
+        if (!await this.SendCommandAsync(`${this.Commands.SetSteps} ${steps}`)) {
+            processError('Не удалось передать столу параметры');
+            return false;
+        }
+
+        Model.Steps = steps;
+        const value = Steps.findIndex((e) => e === Model.Steps);
+        Element('STEPS_SLIDER').value = value;
+        Element('STEPS_VALUE').innerText = Model.Steps;
+
+        setCookieValue('Steps', Model.Steps);
+        return true;
+    }
+
+    async #SetAccelerationAsync(acceleration) {
+        if (acceleration === null || isNaN(acceleration)) {
+            acceleration = Model.Acceleration;
+        }
+
+        if (!await this.SendCommandAsync(`${this.Commands.SetAcceleration} ${acceleration}`)) {
+            processError('Не удалось передать столу параметры');
+            return false;
+        }
+
+        Model.Acceleration = acceleration;
+        Element('ACC_SLIDER').value = Model.Acceleration;
+        Element('ACC_VALUE').innerText = Model.Acceleration;
+
+        setCookieValue('Acceleration', Model.Acceleration);
+        return true;
+    }
+
+    async #SetExposureAsync(exposure) {
+        if (exposure === null || isNaN(exposure)) {
+            exposure = Model.Exposure;
+        }
+
+        if (!await this.SendCommandAsync(`${this.Commands.SetExposure} ${exposure}`)) {
+            processError('Не удалось передать столу параметры');
+            return false;
+        }
+
+        Model.Exposure = exposure;
+        Element('EXP_SLIDER').value = Model.Exposure / 100;
+        Element('EXP_VALUE').innerText = Model.Exposure;
+
+        setCookieValue('Exposure', Model.Exposure);
+        return true;
+    }
+
+    async #SetDelayAsync(delay) {
+        if (delay === null || isNaN(delay)) {
+            delay = Model.Delay;
+        }
+
+        if (!await this.SendCommandAsync(`${this.Commands.SetDelay} ${delay}`)) {
+            processError('Не удалось передать столу параметры');
+            return false;
+        }
+
+        Model.Delay = delay;
+        Element('DELAY_SLIDER').value = Model.Delay / 100;
+        Element('DELAY_VALUE').innerText = Model.Delay;
+
+        setCookieValue('Delay', Model.Delay);
+        return true;
+    }
+
+    async #SetVideoPWMAsync(videoPWM) {
+        if (videoPWM === null || isNaN(videoPWM)) {
+            videoPWM = Model.VideoPWM;
+        }
+
+        if (!await this.SendCommandAsync(`${this.Commands.SetVideoPWM} ${videoPWM}`)) {
+            // Current videoPwm can be invalid for this table
+            // try to use default
+            videoPWM = 80;
+            if (!await this.SendCommandAsync(`${this.Commands.SetVideoPWM} ${videoPWM}`)) {
+                processError('Не удалось передать столу параметры');
+                return false;
+            }
+        }
+
+        Model.VideoPWM = videoPWM;
+        setCookieValue('Vpwm', Model.VideoPWM);
+        return true;
+    }
+
+    async #SetNonstopFrequencyAsync(NonstopFrequency) {
+        if (NonstopFrequency === null || isNaN(NonstopFrequency)) {
+            NonstopFrequency = Model.NonstopFrequency;
+        }
+        
+        if (!await this.SendCommandAsync(`${this.Commands.SetNonstopFrequency} ${NonstopFrequency}`)) {
+            processError('Не удалось передать столу параметры');
+            return false;
+        }
+
+        Model.NonstopFrequency = NonstopFrequency;
+        setCookieValue('Nfreq', Model.NonstopFrequency);
+        return true;
+    }
+
+    async SendCommandAsync(command) {
+        return await this.#SendTokenAsync(command, [this.Commands.OK, this.Commands.Error]) === 'OK';
+    }
+
+    async #WaitUntilAsync(func, timeoutMs) {
+        return new Promise((resolve, reject) => {
+            if (func()) {
+                if (DEBUG) console.log('resolved immediately');
+                resolve();
+                return;
+            }
+
+            const timeWas = new Date();
+            const wait = setInterval(() => {
+                if (func()) {
+                    if (DEBUG) console.log('resolved after', new Date() - timeWas, 'ms');
+                    clearInterval(wait);
+                    resolve();
+                } else if (new Date() - timeWas > timeoutMs) { // Timeout
+                    if (DEBUG) console.log('rejected after', new Date() - timeWas, 'ms');
+                    clearInterval(wait);
+                    reject(new Error(`Timeout: rejected after ${new Date() - timeWas}ms`));
+                }
+            }, 20);
+        });
+    }
+
+    async #SendTokenAsync(token, acceptedResponses) {
+        let response = null;
+        this.#commandHandler = (event) => {
+            const str = decoder.decode(event.target.value);
+            const text = str.replace(terminator, '');
+            LOG_INCOMING_TOKENS('[CommandHandler] ->', text);
+            if (response === null && acceptedResponses.some((e) => e === text)) {
+                response = text;
+                return true;
+            }
+
+            return false;
+        }
+
+        this.#busy = true;
+        try {
+            if (DEBUG) console.log('%cCommand: ' + token, 'font-weight: bold;');
+            await this.#WriteAsync(token + terminator);
+            await this.#WaitUntilAsync(() => response !== null, 1000);
+            return response;
+        } catch(error) {
+            processError('Стол не отвечает на команду');
+            return null;
+        } finally {
+            this.#commandHandler = null;
+            this.#busy = false;
+        }
+    }
+
+    async SendTokenAndAcceptNumberAsync(token) {
+        let response = null;
+        this.#commandHandler = (event) => {
+            const str = decoder.decode(event.target.value);
+            const text = str.replace(terminator, '');
+            LOG_INCOMING_TOKENS('[CommandHandler] ->', text);
+            let number = parseFloat(text);
+            if (isNaN(number)) {
+                return false;
+            }
+
+            response = number;
+            return true;
+        }
+
+        this.#busy = true;
+        try {
+            if (DEBUG) console.log('%cCommand: ' + token, 'font-weight: bold;');
+            await this.#WriteAsync(token + terminator);
+            await this.#WaitUntilAsync(() => response !== null, 500);
+            return response;
+        } catch(error) {
+            return null;
+        } finally {
+            this.#commandHandler = null;
+            this.#busy = false;
+        }
+    }
+
+    async #WriteAsync(text) {
+        await this.#writeCharacteristic.writeValueWithoutResponse(encoder.encode(text));
+    }
+
+    async RunAsync(command, listeningHandler) {
+        this.BeginListening(listeningHandler);
+        Model.IsRunning = true;
+        Model.CurrentDrawer.Draw();
+        if (!await this.SendCommandAsync(command)) {
+            this.EndListening();
+            Model.IsRunning = false;
+            return false;
+        }
+
+        return true;
+    }
+
+    BeginListening(listeningHandler) {
+        this.#listeningHandler = listeningHandler;
+    }
+
+    EndListening() {
+        this.#listeningHandler = null;
+    }
+}
+
+const Service = new BluetoothService();
+</script>
