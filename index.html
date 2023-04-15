@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Поворотный стол</title>
-    <link href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAGLSURBVDhPjZK/isJAEMZnj3sBQcsU5ytoe2iuUFLIYV7AB7C6lzAWylUBU1j4ArERIginoqUiKtiKWOrZiLZzO3NJyB8D/mCy30x2vuwsAURMDAk9/JhOp7Ic2RNKIg1JETSKNROqqvqb6/U6DgYDDtKBfY8NgkEN7Xbbz0l7Jk8Z0Fc9TQRrlFK8yOQphBCuCsMGy+WSXGM4jgPy2G4GrKlGeD1it9vh/X6HfD7PL6LImUHTNNbUbJom68ViAdfrFcRwOMR0Op1okAQZHA4HeL3dblAulwVdiF6tPhwlit3v84VIAxSWZfEJdF0P3ZJt21RzszD7/R5Wq9X/HRiGgZlMhl8Ui0WYTCZsdDqd4Hw+Y6vV4rzb7dICH/In+xmPWadSKRCz2Qzn8zkXokgDXsmk2WyyIZ3Wo1QqAc9uNBr4e7m45TjH4xEURaGT+Hf0WanAe6Eg2IDYbrc4Go1gvV5zHqTX64larQZyVNxsNl9Wp/P9ls3yaL5BFGqQIDWTkD8OLUwul3MVwB91ljoD3WAK+AAAAABJRU5ErkJggg==" rel="icon" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" href="icons/favicon.ico" sizes="any">
+    <link rel="manifest" href="manifest.webmanifest">
     <style type="text/css">
         * {
             font-size: 1.1rem;
@@ -144,7 +146,7 @@
     <div class="page pageTable">
         <div class="ribbon">
             <button class="ribbon-button" type="button" title="Disconnect" onclick="Service.Disconnect()">
-                <img title="Back" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAMCAYAAABiDJ37AAAAAXNSR0IArs4c6QAAAFBJREFUOE+900ESACAEBdD+/Q+tsWChIUm1jYdRGMlDRMShABClhJecKJAgZfAU0oK2/Sq0gLeQghZK7sgNQzsopdpGfraULvjfw/Y63v2UCY9cMAV7foyYAAAAAElFTkSuQmCC">
+                <img title="Back" src="icons/arrow.png">
             </button>
             <label class="ribbon-text">Поворотный стол</label>
         </div>
@@ -306,8 +308,7 @@ window.onload = () => {
 
 function setMode() {
     let index = Mode.Auto;
-//    const mode = getCookieValue('CurrentMode');
-    const mode = "2";
+    const mode = getCookieValue('CurrentMode');
     if (mode) {
         index = parseInt(mode);
     }
