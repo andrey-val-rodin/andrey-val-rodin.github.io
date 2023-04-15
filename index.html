@@ -286,11 +286,9 @@ function LOG_INCOMING_TOKENS(prefix, text) {
 }
 
 window.onload = () => {
+    setMode();
     BaseDrawer.initialize();
-    let index = getCookieValue('CurrentMode');
-    index = index ? index : Mode.Auto;
-    Element('SELECT_MODE').selectedIndex = index;
-    Model.CurrentMode = index;
+    
     try {
         if ('onavailabilitychanged' in navigator.bluetooth) {
             navigator.bluetooth.addEventListener('availabilitychanged', async (event) => {
@@ -304,6 +302,20 @@ window.onload = () => {
     } catch(error) {
         processError('Ваш браузер не поддерживает технологию Web Bluetooth. Используйте Google Chrome')
     }
+}
+
+function setMode() {
+    let index = Mode.Auto;
+//    const mode = getCookieValue('CurrentMode');
+    const mode = "2";
+    if (mode) {
+        index = parseInt(mode);
+    }
+    if (index < Mode.First || index > Mode.Last) {
+        index = Mode.Auto;
+    }
+    Element('SELECT_MODE').selectedIndex = index;
+    Model.CurrentMode = index;
 }
 
 const pageConnection = document.querySelector('.pageConnection');
@@ -355,11 +367,13 @@ const Deviate = {
     Decrease: 2
 }
 const Mode = {
+    First: 0,
     Auto: 0,
     Manual: 1,
     Nonstop: 2,
     Video: 3,
-    Rotate: 4
+    Rotate: 4,
+    Last: 4
 }
 
 const terminator = '\n';
@@ -1064,7 +1078,7 @@ class TableModel {
     }
 
     GetCurrentModeText() {
-        switch (Model.CurrentMode) {
+        switch (this.CurrentMode) {
             case Mode.Auto:
                 return 'Авто';
             case Mode.Manual:
@@ -1079,7 +1093,7 @@ class TableModel {
     }
 
     GetCurrentModeCommand() {
-        switch (Model.CurrentMode) {
+        switch (this.CurrentMode) {
             case Mode.Auto:
                 return Service.Commands.RunAutoMode;
             case Mode.Manual:
