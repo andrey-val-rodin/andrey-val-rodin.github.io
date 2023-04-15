@@ -287,7 +287,10 @@ function LOG_INCOMING_TOKENS(prefix, text) {
 
 window.onload = () => {
     BaseDrawer.initialize();
-    Element('SELECT_MODE').selectedIndex = Mode.Auto;
+    let index = getCookieValue('CurrentMode');
+    index = index ? index : Mode.Auto;
+    Element('SELECT_MODE').selectedIndex = index;
+    Model.CurrentMode = index;
     try {
         if ('onavailabilitychanged' in navigator.bluetooth) {
             navigator.bluetooth.addEventListener('availabilitychanged', async (event) => {
@@ -873,7 +876,12 @@ class TableModel {
     get NonstopFrequency() { return this.#NonstopFrequency; }
     set NonstopFrequency(value) { this.#NonstopFrequency = value; }
     get CurrentMode() { return this.#currentMode; }
-    set CurrentMode(value) { this.#currentMode = value; }
+    set CurrentMode(value) {
+        if (this.#currentMode !== value) {
+            this.#currentMode = value;
+            setCookieValue('CurrentMode', value);
+        }
+    }
     get CurrentStep() { return this.#currentStep; }
     set CurrentStep(value) {
         if (this.#currentStep !== value) {
