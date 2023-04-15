@@ -1064,7 +1064,7 @@ class TableModel {
     }
 
     GetCurrentModeText() {
-        switch (this.CurrentMode) {
+        switch (Model.CurrentMode) {
             case Mode.Auto:
                 return 'Авто';
             case Mode.Manual:
@@ -1079,7 +1079,7 @@ class TableModel {
     }
 
     GetCurrentModeCommand() {
-        switch (this.CurrentMode) {
+        switch (Model.CurrentMode) {
             case Mode.Auto:
                 return Service.Commands.RunAutoMode;
             case Mode.Manual:
