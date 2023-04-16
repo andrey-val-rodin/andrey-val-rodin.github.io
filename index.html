@@ -1768,32 +1768,40 @@ class BluetoothService {
         try {
             await this.#ConnectToDeviceAsync();
             if (!this.Device) {
-                return;
+                return false;
             }
             if (this.Cancellation) {
-                return;
+                return false;
             }
             progress.value = 25;
 
             if (!await this.#LoadCharacteristicsAsync()) {
                 processError('Характеристика не найдена');
-                return;
+                return false;
             }
             if (this.Cancellation) {
-                return;
+                return false;
             }
             progress.value = 50;
 
             if (!await this.#CheckStatusAsync()) {
-                return;
+                return false;
             }
             if (this.Cancellation) {
-                return;
+                return false;
             }
-            progress.value = 70;
+            progress.value = 65;
+
+            if (!await this.#EstablishConnectionAsync()) {
+                return false;
+            }
+            if (this.Cancellation) {
+                return false;
+            }
+            progress.value = 80;
 
             if (!await this.#SetConfigAsync()) {
-                return;
+                return false;
             }
             progress.value = 100;
 
@@ -1909,6 +1917,21 @@ class BluetoothService {
             default:
                 processError(`Неизвестный ответ стола: ${response}`);
                 return false;
+        }
+    }
+
+    async #EstablishConnectionAsync() {
+        let response = await this.#SendTokenAsync(this.Commands.EstablishConn,
+            [this.Commands.OK, this.Commands.Error, 'UNDEF']);
+
+        switch (response) {
+            case 'OK':
+                return true;
+            case 'UNDEF':
+                // Backward compatibility
+                return true;
+            default:
+                processError('Отказ в соединении. Стол может работать только с одним клиентом');
         }
     }
 
