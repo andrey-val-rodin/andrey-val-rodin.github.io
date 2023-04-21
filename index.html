@@ -292,7 +292,7 @@ window.onload = () => {
     BaseDrawer.initialize();
     
     try {
-        if (!navigator.bluetooth) {
+        if (!navigator.bluetooth || !('requestDevice' in navigator.bluetooth)) {
             processError('Ваш браузер не поддерживает технологию Web Bluetooth');
             return;
         }
