@@ -292,6 +292,11 @@ window.onload = () => {
     BaseDrawer.initialize();
     
     try {
+        if (!navigator.bluetooth) {
+            processError('Ваш браузер не поддерживает технологию Web Bluetooth');
+            return;
+        }
+
         if ('onavailabilitychanged' in navigator.bluetooth) {
             navigator.bluetooth.addEventListener('availabilitychanged', async (event) => {
                 if (!event.value) {
@@ -302,7 +307,7 @@ window.onload = () => {
             });
         }
     } catch(error) {
-        processError('Ваш браузер не поддерживает технологию Web Bluetooth. Используйте Google Chrome')
+        processError('Ваш браузер не поддерживает технологию Web Bluetooth')
     }
 }
 
