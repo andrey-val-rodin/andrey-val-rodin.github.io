@@ -200,14 +200,14 @@
                     <option>-1</option>
                     <option>0</option>
                     <option>1</option>
-                </datalist>                
+                </datalist>
             </div>
             <div class="width center" id="ACC" class="slider">
                 <p class="slider-labels">
-                    <label>Ускорение</label>
+                    <label>Плавность</label>
                     <Label id="ACC_VALUE" class="bold">1</Label>
                 </p>
-                <input disabled type="range" id="ACC_SLIDER" min="1" max="10" value="1" aria-label="Ускорение" onchange="Model.ChangeAcc(this.value)" oninput="ACC_VALUE.innerText = this.value"/>
+                <input disabled type="range" id="ACC_SLIDER" min="1" max="10" value="1" aria-label="Плавность" onchange="Model.ChangeAcc(this.value)" oninput="ACC_VALUE.innerText = this.value"/>
             </div>
             <div class="width center" id="EXPOSURE" class="slider">
                 <p class="slider-labels">
@@ -861,7 +861,7 @@ class RotateDrawer extends BaseDrawer {
 
 class TableModel {
     #steps = 24;
-    #acceleration = 7;
+    #fluency = 4;
     #exposure = 100;
     #delay = 0;
     #videoPWM = 80;
@@ -885,8 +885,9 @@ class TableModel {
 
     get Steps() { return this.#steps; }
     set Steps(value) { this.#steps = value; }
-    get Acceleration() { return this.#acceleration; }
-    set Acceleration(value) {this.#acceleration = value; }
+    get Fluency() { return this.#fluency; }
+    set Fluency(value) {this.#fluency = value; }
+    get Acceleration() { return this.ConvertAcceleration(this.Fluency); }
     get Exposure() { return this.#exposure; }
     set Exposure(value) { this.#exposure = value; }
     get Delay() { return this.#delay; }
@@ -1614,13 +1615,17 @@ class TableModel {
             .catch(() => Refuse());
     }
 
+    ConvertAcceleration(value) {
+        return (value - 6) * -1 + 5;
+    }
+
     ChangeAcc(value) {
         const ReflectChanges = () => {
-            Element('ACC_SLIDER').value = Model.Acceleration;
-            Element('ACC_VALUE').innerText = Model.Acceleration;
+            Element('ACC_SLIDER').value = Model.Fluency;
+            Element('ACC_VALUE').innerText = Model.Fluency;
         }
         const Set = (value) => {
-            Model.Acceleration = value;
+            Model.Fluency = value;
             setCookieValue('Acceleration', value);
             ReflectChanges();
         };
@@ -1634,7 +1639,7 @@ class TableModel {
             return;
         }
 
-        Service.SendCommandAsync(Service.Commands.SetAcceleration + " " + value)
+        Service.SendCommandAsync(Service.Commands.SetAcceleration + " " + this.ConvertAcceleration(value))
             .then(result => result ? Set(value) : Refuse())
             .catch(Refuse);
     }
@@ -1978,11 +1983,11 @@ class BluetoothService {
             return false;
         }
 
-        Model.Acceleration = acceleration;
-        Element('ACC_SLIDER').value = Model.Acceleration;
-        Element('ACC_VALUE').innerText = Model.Acceleration;
+        Model.Fluency = Model.ConvertAcceleration(acceleration);
+        Element('ACC_SLIDER').value = Model.Fluency;
+        Element('ACC_VALUE').innerText = Model.Fluency;
 
-        setCookieValue('Acceleration', Model.Acceleration);
+        setCookieValue('Acceleration', Model.Fluency);
         return true;
     }
 
