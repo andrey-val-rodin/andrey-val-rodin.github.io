@@ -1797,21 +1797,21 @@ class BluetoothService {
             }
             progress.value = 50;
 
-            if (!await this.#CheckStatusAsync()) {
-                return false;
-            }
-            if (this.Cancellation) {
-                return false;
-            }
-            progress.value = 65;
-
             if (!await this.#EstablishConnectionAsync()) {
                 return false;
             }
             if (this.Cancellation) {
                 return false;
             }
-            progress.value = 80;
+            progress.value = 60;
+
+            if (!await this.#CheckStatusAsync()) {
+                return false;
+            }
+            if (this.Cancellation) {
+                return false;
+            }
+            progress.value = 70;
 
             if (!await this.#SetConfigAsync()) {
                 return false;
@@ -1922,7 +1922,7 @@ class BluetoothService {
                 return true;
             case this.Commands.Busy:
             case this.Commands.Running:
-                processError('Cтол находится в процессе работы');
+                processError('Стол находится в процессе работы');
                 return false;
             case null:
                 processError("Не удалось получить текущий статус стола");
@@ -1944,7 +1944,7 @@ class BluetoothService {
                 // Backward compatibility
                 return true;
             default:
-                processError('Отказ в соединении. Стол может работать только с одним клиентом');
+                processError('Стол уже соединён по Bluetooth');
         }
     }
 
