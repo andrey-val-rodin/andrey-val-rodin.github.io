@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Поворотный стол</title>
+    <title>Фотостол</title>
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="icon" href="icons/favicon.ico" sizes="any">
     <link rel="manifest" href="manifest.webmanifest">
@@ -151,7 +151,7 @@
             <button class="ribbon-button" type="button" title="Disconnect" onclick="Service.Disconnect()">
                 <img title="Назад" src="icons/arrow.png">
             </button>
-            <label class="ribbon-text">Поворотный стол</label>
+            <label class="ribbon-text">Фотостол</label>
         </div>
         <div>
             <p>
@@ -181,10 +181,17 @@
             </p>
             <div class="width center" id="STEPS">
                 <p class="slider-labels">
-                    <label>Шаги</label>
+                    <label>Шаг съёмки</label>
                     <Label id="STEPS_VALUE" class="bold">0</Label>
                 </p>
-                <input disabled type="range" id="STEPS_SLIDER" min="0" max="21" value="0" aria-label="Шаги" onchange="Model.ChangeSteps(this.value)" oninput="STEPS_VALUE.innerText = Steps[this.value]"/>
+                <input disabled type="range" id="STEPS_SLIDER" min="0" max="21" value="0" aria-label="Шаг съёмки" onchange="Model.ChangeSteps(this.value)" oninput="Model.Step = this.value; STEPS_VALUE.innerText = Model.Degrees; EFF_STEPS_VALUE.innerText = Model.EffectiveStepCount"/>
+            </div>
+            <div class="width center" id="EFF_STEPS">
+                <p class="slider-labels">
+                    <label>Количество снимков</label>
+                    <Label id="EFF_STEPS_VALUE" class="bold">0</Label>
+                </p>
+                <input disabled type="range" id="EFF_STEPS_SLIDER" min="1" max="22" value="22" aria-label="Количество снимков" onchange="Model.ChangeEffectiveSteps(this.value)" oninput="EFF_STEPS_VALUE.innerText = this.value"/>
             </div>
             <div class="hidden width center" id="FREQ" class="slider">
                 <p class="slider-labels">
@@ -268,7 +275,7 @@
 </html>
 <script>
 // Set DEBUG = true to enable debugging and logging
-const DEBUG = false;
+const DEBUG = true;
 if (DEBUG) {
     window.onerror = function(msg, url, lineNo, columnNo, error) {
         alert(`msg: ${msg}\nurl: ${url}\nlineNo: ${lineNo}\ncolumnNo: ${columnNo}\nerror: ${error}`);
@@ -368,7 +375,6 @@ function setCookieValue(key, value) {
     document.cookie = `${key}=${value}; expires=Fri, 31 Dec 9999 23:59:59 GMT`;
 }
 
-const StepsLength = 22;
 const Steps = [ 2, 4, 5, 6, 8, 9, 10, 12, 15, 18, 20, 24, 30, 36, 40, 45, 60, 72, 90, 120, 180, 360 ];
 const Deviate = {
     None: 0,
@@ -555,7 +561,7 @@ class BaseDrawer {
 class StepsDrawer extends BaseDrawer {
     _DrawSector() {
         if (Model.CurrentStep > 0) {
-            const angle = 360 / Model.Steps;
+            const angle = 360 / Model.StepCount;
             const anchor = angle * (Model.CurrentStep - 1);
             super._DrawSector(anchor + Model.CurrentPos + 90, anchor + angle + 90);
         }
@@ -592,7 +598,7 @@ class ManualDrawer extends StepsDrawer {
 
     _DrawMarker() {
         if (Model.CurrentStep > 0 && Model.CurrentPos === 0) {
-            const angle = 360 / Model.Steps;
+            const angle = 360 / Model.StepCount;
             const anchor = angle * (Model.CurrentStep - 1);
             super._DrawMarker(anchor + 90, '#008E00');
         }
@@ -863,12 +869,14 @@ class RotateDrawer extends BaseDrawer {
 // #endregion
 
 class TableModel {
-    #steps = 24;
+    #step = 10;
+    #effectiveStepCount = 24;
+    #maxEffectiveStepCount = 24;
     #fluency = 4;
     #exposure = 100;
     #delay = 0;
     #videoPWM = 80;
-    #NonstopFrequency = 0.5;
+    #nonstopFrequency = 0.5;
     #currentMode = Mode.Auto;
     #currentStep = 0;
     #currentPos = 0;
@@ -886,8 +894,21 @@ class TableModel {
 
     #drawers = [];
 
-    get Steps() { return this.#steps; }
-    set Steps(value) { this.#steps = value; }
+    get StepCount() { return Steps[this.ReverseStepsIndex(this.Step)]; }
+    get Step() { return this.#step; }
+    set Step(value) {
+        this.#step = value;
+        this.MaxEffectiveStepCount = this.StepCount;
+        const slider = Element('EFF_STEPS_SLIDER');
+        slider.max = this.MaxEffectiveStepCount;
+        this.EffectiveStepCount = this.MaxEffectiveStepCount;
+        slider.value = this.EffectiveStepCount;
+    }
+    get Degrees() { return `${360 / this.StepCount}°` };
+    get EffectiveStepCount() { return this.#effectiveStepCount; }
+    set EffectiveStepCount(value) { this.#effectiveStepCount = value; }
+    get MaxEffectiveStepCount() { return this.#maxEffectiveStepCount; }
+    set MaxEffectiveStepCount(value) { this.#maxEffectiveStepCount = value; }
     get Fluency() { return this.#fluency; }
     set Fluency(value) {this.#fluency = value; }
     get Acceleration() { return this.ConvertAcceleration(this.Fluency); }
@@ -897,8 +918,8 @@ class TableModel {
     set Delay(value) { this.#delay = value; }
     get VideoPWM() { return this.#videoPWM; }
     set VideoPWM(value) { this.#videoPWM = value; }
-    get NonstopFrequency() { return this.#NonstopFrequency; }
-    set NonstopFrequency(value) { this.#NonstopFrequency = value; }
+    get NonstopFrequency() { return this.#nonstopFrequency; }
+    set NonstopFrequency(value) { this.#nonstopFrequency = value; }
     get CurrentMode() { return this.#currentMode; }
     set CurrentMode(value) {
         if (this.#currentMode !== value) {
@@ -992,6 +1013,7 @@ class TableModel {
                     Show(Element('INCR_BUTTONS'), false);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
+                    Show(Element('EFF_STEPS'), false);
                     Show(Element('FREQ'), false);
                     Show(Element('SPEED'), false);
                     Show(Element('ACC'), true);
@@ -1003,6 +1025,7 @@ class TableModel {
                     Show(Element('INCR_BUTTONS'), false);
                     Show(Element('PHOTO_BUTTONS'), true);
                     Show(Element('STEPS'), false);
+                    Show(Element('EFF_STEPS'), false);
                     Show(Element('FREQ'), false);
                     Show(Element('SPEED'), false);
                     Show(Element('ACC'), true);
@@ -1014,6 +1037,7 @@ class TableModel {
                     Show(Element('INCR_BUTTONS'), true);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
+                    Show(Element('EFF_STEPS'), false);
                     Show(Element('FREQ'), true);
                     Show(Element('SPEED'), false);
                     Show(Element('ACC'), false);
@@ -1025,6 +1049,7 @@ class TableModel {
                     Show(Element('INCR_BUTTONS'), true);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
+                    Show(Element('EFF_STEPS'), false);
                     Show(Element('FREQ'), false);
                     Show(Element('SPEED'), true);
                     Show(Element('ACC'), true);
@@ -1036,6 +1061,7 @@ class TableModel {
                     Show(Element('INCR_BUTTONS'), false);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
+                    Show(Element('EFF_STEPS'), false);
                     Show(Element('FREQ'), false);
                     Show(Element('SPEED'), false);
                     Show(Element('ACC'), false);
@@ -1047,6 +1073,7 @@ class TableModel {
             Show(Element('SELECT_MODE'), true);
             Show(Element('BTN_START'), true);
             Show(Element('STEPS'), true);
+            Show(Element('EFF_STEPS'), true);
             Show(Element('FREQ'), false);
             Show(Element('SPEED'), false);
             Show(Element('ACC'), true);
@@ -1066,7 +1093,8 @@ class TableModel {
         Enable(Element('SELECT_MODE'), enable);
         Enable(Element('BTN_START'), enable);
         Enable(Element('STEPS_SLIDER'), enable);
-        Enable(Element('FREQ_SLIDER'), enable);
+        Enable(Element('EFF_STEPS_SLIDER'), enable);
+        Enable(Element('FREQ_SLIDER'), enable && this.IsSpeedEnabled);
         Enable(Element('SPEED_SLIDER'), enable && this.IsSpeedEnabled);
         Enable(Element('BTN_DEC'), enable && this.IsSpeedEnabled);
         Enable(Element('BTN_INC'), enable && this.IsSpeedEnabled);
@@ -1081,7 +1109,7 @@ class TableModel {
         if (this.CurrentMode === Mode.Auto ||
             this.CurrentMode === Mode.Manual ||
             this.CurrentMode === Mode.Nonstop) {
-                result += ` (${this.Steps})`;
+                result += ` (${this.EffectiveStepCount})`;
             }
 
         return result;
@@ -1216,6 +1244,7 @@ class TableModel {
             this.NonstopFrequency = current;
         }
 
+        this.EnableElements();
         Element('FREQ_SLIDER').min = this.LowNonstopFrequency;
         Element('FREQ_SLIDER').max = this.HighNonstopFrequency;
         Element('FREQ_SLIDER').value = this.NonstopFrequency;
@@ -1532,13 +1561,17 @@ class TableModel {
 
     ChangeSteps(value) {
         const ReflectChanges = () => {
-            value = Steps.findIndex((e) => e === Model.Steps);
+            value = this.ReverseStepsIndex(Steps.findIndex((e) => e === Model.StepCount));
             Element('STEPS_SLIDER').value = value;
-            Element('STEPS_VALUE').innerText = Model.Steps;
+            Element('STEPS_VALUE').innerText = Model.Degrees;
+            Element('EFF_STEPS_SLIDER').value = Model.EffectiveStepCount;
+            Element('EFF_STEPS_VALUE').innerText = Model.EffectiveStepCount;
         }
         const Set = (value) => {
-            Model.Steps = value;
-            setCookieValue('Steps', value);
+            Model.Step = Model.ReverseStepsIndex(Steps.findIndex((e) => e == value));
+            Model.EffectiveStepCount = Model.StepCount;
+            setCookieValue('Steps', Model.StepCount);
+            setCookieValue('EffectiveSteps', Model.EffectiveStepCount);
             ReflectChanges();
         }
         const Refuse = () => {
@@ -1551,8 +1584,28 @@ class TableModel {
             return;
         }
 
-        value = Steps[value];
-        Service.SendCommandAsync(Service.Commands.SetSteps + " " + value)
+        value = Steps[this.ReverseStepsIndex(value)];
+        Service.SendCommandAsync(`${Service.Commands.SetSteps} ${value} ${value}`)
+            .then(result => result ? Set(value) : Refuse())
+            .catch(Refuse);
+    }
+
+    ChangeEffectiveSteps(value) {
+        const ReflectChanges = () => {
+            Element('EFF_STEPS_SLIDER').value = Model.EffectiveStepCount;
+            Element('EFF_STEPS_VALUE').innerText = Model.EffectiveStepCount;
+        }
+        const Set = (value) => {
+            Model.EffectiveStepCount = value;
+            setCookieValue('EffectiveSteps', value);
+            ReflectChanges();
+        }
+        const Refuse = () => {
+            // Restore old steps
+            ReflectChanges();
+        }
+
+        Service.SendCommandAsync(`${Service.Commands.SetSteps} ${Model.StepCount} ${value}`)
             .then(result => result ? Set(value) : Refuse())
             .catch(Refuse);
     }
@@ -1619,7 +1672,16 @@ class TableModel {
     }
 
     ConvertAcceleration(value) {
-        return (value - 6) * -1 + 5;
+        return this.#ReverseIndex(10, value - 1) + 1;
+
+    }
+
+    ReverseStepsIndex(value) {
+        return this.#ReverseIndex(Steps.length, value);
+    }
+
+    #ReverseIndex(length, index) {
+        return length - index - 1;
     }
 
     ChangeAcc(value) {
@@ -1949,7 +2011,7 @@ class BluetoothService {
     }
 
     async #SetConfigAsync() {
-        return await this.#SetStepsAsync(parseInt(getCookieValue('Steps'))) &&
+        return await this.#SetStepsAsync(parseInt(getCookieValue('Steps'), getCookieValue('EffectiveSteps'))) &&
             await this.#SetAccelerationAsync(parseInt(getCookieValue('Acceleration'))) &&
             await this.#SetExposureAsync(parseInt(getCookieValue('Exposure'))) &&
             await this.#SetDelayAsync(parseInt(getCookieValue('Delay'))) &&
@@ -1957,22 +2019,28 @@ class BluetoothService {
             await this.#SetNonstopFrequencyAsync(parseFloat(getCookieValue('Nfreq')));
     }
 
-    async #SetStepsAsync(steps) {
+    async #SetStepsAsync(steps, effectiveSteps) {
         if (steps === null || isNaN(steps)) {
-            steps = Model.Steps;
+            steps = Model.StepCount;
+        }
+        if (effectiveSteps === null || isNaN(effectiveSteps) || effectiveSteps > steps) {
+            effectiveSteps = steps;
         }
 
-        if (!await this.SendCommandAsync(`${this.Commands.SetSteps} ${steps}`)) {
+        if (!await this.SendCommandAsync(`${this.Commands.SetSteps} ${steps} ${effectiveSteps}`)) {
             processError('Не удалось передать столу параметры');
             return false;
         }
 
-        Model.Steps = steps;
-        const value = Steps.findIndex((e) => e === Model.Steps);
-        Element('STEPS_SLIDER').value = value;
-        Element('STEPS_VALUE').innerText = Model.Steps;
+        Model.Step = Model.ReverseStepsIndex(Steps.findIndex((e) => e == steps));
+        Model.EffectiveStepCount = effectiveSteps;
+        Element('STEPS_SLIDER').value = Model.Step;
+        Element('STEPS_VALUE').innerText = Model.Degrees;
+        Element('EFF_STEPS_SLIDER').value = Model.EffectiveStepCount;
+        Element('EFF_STEPS_VALUE').innerText = Model.EffectiveStepCount;
 
-        setCookieValue('Steps', Model.Steps);
+        setCookieValue('Steps', Model.StepCount);
+        setCookieValue('EffectiveSteps', Model.EffectiveStepCount);
         return true;
     }
 
