@@ -2011,7 +2011,7 @@ class BluetoothService {
     }
 
     async #SetConfigAsync() {
-        return await this.#SetStepsAsync(parseInt(getCookieValue('Steps'), getCookieValue('EffectiveSteps'))) &&
+        return await this.#SetStepsAsync(parseInt(getCookieValue('Steps')), parseInt(getCookieValue('EffectiveSteps'))) &&
             await this.#SetAccelerationAsync(parseInt(getCookieValue('Acceleration'))) &&
             await this.#SetExposureAsync(parseInt(getCookieValue('Exposure'))) &&
             await this.#SetDelayAsync(parseInt(getCookieValue('Delay'))) &&
