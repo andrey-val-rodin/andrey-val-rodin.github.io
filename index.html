@@ -1153,6 +1153,12 @@ class TableModel {
         const Run = async () => await Service.RunAsync(this.GetCurrentModeCommand(), this.#ListeningHandler);
         switch (Model.CurrentMode)
         {
+            case Mode.Manual:
+                this.IsRunning = await Run();
+                if (Service.IsVersion3) {
+                    Model.CurrentStep = 1;
+                }
+                break;
             case Mode.Nonstop:
                 await this.#InitNonstopAsync();
                 this.IsRunning = await Run();
@@ -1184,13 +1190,27 @@ class TableModel {
         LOG_INCOMING_TOKENS('[ListeningHandler] ->', text);
         if (text.startsWith(Service.Commands.Step)) {
             Model.CurrentStep = TryParse(text.substring(5));
-            if (Model.CurrentMode === Mode.Manual) {
+            if (!Service.IsVersion3 && Model.CurrentMode === Mode.Manual) {
                 Model.IsPerformingManualStep = false;
                 Model.CurrentPos = 0;
             }
         } else if (text.startsWith(Service.Commands.Position)) {
             Model.CurrentPos = TryParse(text.substring(4));
-        } else if (text === 'END') {
+        } else if (text === Service.Commands.EndStep) {
+            // Version 3.0
+            Model.CurrentPos = 0;
+            switch (Model.CurrentMode) {
+                case Mode.Manual:
+                    Model.CurrentStep++;
+                    Model.IsPerformingManualStep = false;
+                    break;
+                case Mode.Rotate:
+                    Model.CurrentDrawer.Clear();
+                    Model.CurrentDrawer.Draw();
+                    Model.IsRotating = false;
+                    break;
+            }
+        } else if (text === Service.Commands.End) {
             Model.CurrentStep = 0;
             Model.CurrentPos = 0;
             Model.IsSoftStopping = false;
@@ -1201,14 +1221,15 @@ class TableModel {
                     Model.IsRunning = false;
                     break;
                 case Mode.NonStop:
-                Service.EndListening();
+                    Service.EndListening();
                     Model.IsRunning = false;
                     break;
                 case Mode.Rotate:
-                    // final drawing
-                    Model.CurrentDrawer.Clear();
-                    Model.CurrentDrawer.Draw();
-                    Model.IsRotating = false;
+                    if (!Service.IsVersion3) {
+                        Model.CurrentDrawer.Clear();
+                        Model.CurrentDrawer.Draw();
+                        Model.IsRotating = false;
+                    }
                     break;
                 default:
                     Service.EndListening();
@@ -1765,6 +1786,7 @@ class TableModel {
 const Model = new TableModel();
 
 class BluetoothService {
+    #isVersion3 = false;
     #connected = false;
     #device = null;
     #server = null;
@@ -1780,10 +1802,12 @@ class BluetoothService {
     //See https://github.com/andrey-val-rodin/RotatingTable.Xamarin/blob/master/RotatingTable.Xamarin/RotatingTable.Xamarin/Models/Commands.cs
     #commands = {
         Status                  : "STATUS",
+        Version                 : "VERSION",
         Ready                   : "READY",
         Running                 : "RUNNING",
         Busy                    : "BUSY",
         End                     : "END",
+        EndStep                 : "ENDSTEP",
         OK                      : "OK",
         Error                   : "ERR",
         GetClient               : "GET CLIENT",
@@ -1830,6 +1854,7 @@ class BluetoothService {
         Unknown                 : "UNKNOWN",
     }
 
+    get IsVersion3() { return this.#isVersion3; }
     get Connected() { return this.#connected; }
     get Device() { return this.#device; }
     get Commands() { return this.#commands; }
@@ -1874,6 +1899,12 @@ class BluetoothService {
                 return false;
             }
             progress.value = 70;
+
+            await this.#GetVersionAsync();
+            if (this.Cancellation) {
+                return false;
+            }
+            progress.value = 80;
 
             if (!await this.#SetConfigAsync()) {
                 return false;
@@ -1993,6 +2024,15 @@ class BluetoothService {
                 processError(`Неизвестный ответ стола: ${response}`);
                 return false;
         }
+    }
+
+    async #GetVersionAsync() {
+        const GetVersion = async () => {
+            return await Service.SendTokenAndAcceptNumberAsync(Service.Commands.Version);
+        };
+
+        let response = await GetVersion();
+        this.#isVersion3 = (response === 3);
     }
 
     async #EstablishConnectionAsync() {
