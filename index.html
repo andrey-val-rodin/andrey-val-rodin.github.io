@@ -556,13 +556,16 @@ class BaseDrawer {
 
     OnLeave(event) {
     }
+
+    Clear() {
+    }
 }
 
 class StepsDrawer extends BaseDrawer {
-    _DrawSector() {
-        if (Model.CurrentStep > 0) {
+    _DrawSector(stepNumber) {
+        if (stepNumber > 0) {
             const angle = 360 / Model.StepCount;
-            const anchor = angle * (Model.CurrentStep - 1);
+            const anchor = angle * (stepNumber - 1);
             super._DrawSector(anchor + Model.CurrentPos + 90, anchor + angle + 90);
         }
     }
@@ -572,7 +575,7 @@ class AutoDrawer extends StepsDrawer {
     Draw () {
         super.Draw();
         super._DrawCircle();
-        super._DrawSector();
+        super._DrawSector(Model.CurrentStep);
         if (Model.CurrentStep > 0) {
             const height = this.ToUnits(40);
             const font = `bold ${height}px arial`;
@@ -583,25 +586,33 @@ class AutoDrawer extends StepsDrawer {
 }
 
 class ManualDrawer extends StepsDrawer {
+    #step = 1;
+
+    get Step() { return this.#step; }
+    set Step(value) {this.#step = value; }
+    
     Draw() {
         super.Draw();
         super._DrawCircle();
-        super._DrawSector();
+        super._DrawSector(this.Step);
         this._DrawMarker();
-        if (Model.CurrentStep > 0) {
-            const height = this.ToUnits(40);
-            const font = `bold ${height}px arial`;
-            super._DrawText(0, this.ToUnits(18), Model.CurrentStep, font, 'center');
-        }
+        const height = this.ToUnits(40);
+        const font = `bold ${height}px arial`;
+        super._DrawText(0, this.ToUnits(18), this.Step, font, 'center');
         super._DrawBorder();
     }
 
     _DrawMarker() {
-        if (Model.CurrentStep > 0 && Model.CurrentPos === 0) {
+        if (Model.CurrentPos === 0) {
             const angle = 360 / Model.StepCount;
-            const anchor = angle * (Model.CurrentStep - 1);
+            const anchor = angle * (this.Step - 1);
             super._DrawMarker(anchor + 90, '#008E00');
         }
+    }
+
+    Clear() {
+        super.Clear();
+        this.Step = 1;
     }
 }
 
@@ -1198,13 +1209,18 @@ class TableModel {
             Model.CurrentPos = TryParse(text.substring(4));
         } else if (text === Service.Commands.EndStep) {
             // Version 3.0
-            Model.CurrentPos = 0;
             switch (Model.CurrentMode) {
                 case Mode.Manual:
-                    Model.CurrentStep++;
+                    Model.CurrentPos = 0;
+					if (Model.CurrentStep < Model.EffectiveStepCount - 1) {
+	                    Model.CurrentStep++;
+					}
+                    Model.CurrentDrawer.Step++;
+                    Model.CurrentDrawer.Draw();
                     Model.IsPerformingManualStep = false;
                     break;
                 case Mode.Rotate:
+                    Model.CurrentPos = 0;
                     Model.CurrentDrawer.Clear();
                     Model.CurrentDrawer.Draw();
                     Model.IsRotating = false;
@@ -1214,6 +1230,7 @@ class TableModel {
             Model.CurrentStep = 0;
             Model.CurrentPos = 0;
             Model.IsSoftStopping = false;
+            Model.CurrentDrawer.Clear();
             switch (Model.CurrentMode) {
                 case Mode.Manual:
                     Service.EndListening();
@@ -1226,7 +1243,6 @@ class TableModel {
                     break;
                 case Mode.Rotate:
                     if (!Service.IsVersion3) {
-                        Model.CurrentDrawer.Clear();
                         Model.CurrentDrawer.Draw();
                         Model.IsRotating = false;
                     }
@@ -1413,6 +1429,10 @@ class TableModel {
             await HardStop();
             this.IsRunning = false;
         }
+
+        Model.IsPerformingManualStep = false;
+        Model.IsRotating = false;
+        Model.CurrentDrawer.Clear();
     }
 
     async BeginDeviateAsync(deviate) {
@@ -2032,7 +2052,7 @@ class BluetoothService {
         };
 
         let response = await GetVersion();
-        this.#isVersion3 = (response === 3);
+        this.#isVersion3 = (response > 3);
     }
 
     async #EstablishConnectionAsync() {
