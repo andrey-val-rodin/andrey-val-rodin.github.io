@@ -1819,13 +1819,15 @@ class BluetoothService {
     #cancellation = false;
     #busy = false;
 
-    //See https://github.com/andrey-val-rodin/RotatingTable.Xamarin/blob/master/RotatingTable.Xamarin/RotatingTable.Xamarin/Models/Commands.cs
+    //See https://github.com/andrey-val-rodin/RotatingTable.Xamarin/blob/master/RotatingTable.Xamarin/RotatingTable.Xamarin/Models/Tokens.cs
     #commands = {
         Status                  : "STATUS",
         Version                 : "VERSION",
         Ready                   : "READY",
         Running                 : "RUNNING",
         Busy                    : "BUSY",
+        AutoDetectionMinPWM     : "DETECTPWM",
+        TimesMeasure            : "TMEASURE",
         End                     : "END",
         EndStep                 : "ENDSTEP",
         OK                      : "OK",
@@ -1833,7 +1835,6 @@ class BluetoothService {
         GetClient               : "GET CLIENT",
         None                    : "NONE",
         Bluetooth               : "BLE",
-        Browser                 : "BROWSER",
         EstablishConn           : "ECONN",
         GetSteps                : "GET STEPS",
         Step                    : "STEP ",
@@ -1856,7 +1857,7 @@ class BluetoothService {
         SetVideoPWM             : "SET VPWM",
         SetNonstopFrequency     : "SET NFREQ",
         Position                : "POS ",
-        GetMode                 : "GET MODE",
+        MoveError               : "MOVERR",
         RunAutoMode             : "RUN AUTO",
         RunManualMode           : "RUN MANUAL",
         RunNonstopMode          : "RUN NS",
