@@ -1009,6 +1009,10 @@ class Rotate90Drawer extends RotateDrawer {
     }
 
     OnUp(event) {
+        if (this._isBusy) {
+            return;
+        }
+
         this._isDragging = false;
         this.StartMovementAsync();
     }
@@ -1106,6 +1110,10 @@ class FreeMovementDrawer extends RotateDrawer {
     }
 
     OnUp(event) {
+        if (this._isBusy) {
+            return;
+        }
+
         this._isDragging = false;
         this.StartMovementAsync();
         this.Draw();
