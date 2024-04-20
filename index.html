@@ -184,6 +184,7 @@
                 <option>Безостановочный</option>
                 <option>Видео</option>
                 <option>Поворот 90°</option>
+                <option>Свободное перемещение</option>
             </select>
             <p>
                 <button disabled class="width center" type="button" id="BTN_START" onclick="Model.RunAsync()">Старт</button>
@@ -241,13 +242,6 @@
                     <Label id="DELAY_VALUE" class="bold">0</Label>
                 </p>
                 <input disabled type="range" id="DELAY_SLIDER" min="0" max="50" value="0" aria-label="Задержка" onchange="Model.ChangeDelay(this.value)" oninput="DELAY_VALUE.innerText = this.value * 100"/>
-            </div>
-            <div class="hidden" id="ROTATE_BUTTONS">
-                <p class="center width button-group">
-                    <button class="width" id="BTN_LEFT" type="button" onclick="Model.LeftAsync()">&lt;&lt;</button>
-                    <span></span>
-                    <button class="width" id="BTN_RIGHT" type="button" onclick="Model.RightAsync()">&gt;&gt;</button>
-                </p>
             </div>
             <p>
                 <div class="hidden" id="INCR_BUTTONS">
@@ -397,7 +391,8 @@ const Mode = {
     Nonstop: 2,
     Video: 3,
     Rotate: 4,
-    Last: 4
+    FreeMovement: 5,
+    Last: 5
 }
 
 const terminator = '\n';
@@ -548,9 +543,17 @@ class BaseDrawer {
         };
     }
 
-    _IsInsideCircle(x, y)
+    _Transform(event) {
+        let rect = Element('CANVAS').getBoundingClientRect();
+        const x = event.clientX - rect.left - this.Radius;
+        const y = event.clientY - rect.top - this.Radius;
+
+        return {x: x, y: y};
+    }
+
+    _IsInsideCircle(point)
     {
-        var hypotenuse = Math.sqrt(x * x + y * y);
+        var hypotenuse = Math.sqrt(point.x * point.x + point.y * point.y);
         return hypotenuse < this.Radius;
     }
 
@@ -796,7 +799,7 @@ class VideoDrawer extends ChangablePWMDrawer {
     }
 
     OnDown(event) {
-        if (!this._IsInsideCircle(event)) {
+        if (!this._IsInsideCircle(this._Transform(event))) {
             this.Clear();
             return;
         }
@@ -806,7 +809,7 @@ class VideoDrawer extends ChangablePWMDrawer {
     }
 
     OnMove(event) {
-        if (!this._IsInsideCircle(event)) {
+        if (!this._IsInsideCircle(this._Transform(event))) {
             this.Clear();
         }
 
@@ -833,57 +836,285 @@ class VideoDrawer extends ChangablePWMDrawer {
         this.Clear();
         this.Draw();
     }
-
-    _IsInsideCircle(event) {
-        let rect = Element('CANVAS').getBoundingClientRect();
-        const x = event.clientX - rect.left - this.Radius;
-        const y = event.clientY - rect.top - this.Radius;
-
-        return super._IsInsideCircle(x, y);
-    }
 }
 
 class RotateDrawer extends BaseDrawer {
-    get StartAngle() { return Model.CurrentPos; }
+    get StartAngle() { return this._startAngle; }
+    set StartAngle(value) { this._startAngle = value; }
     get EndAngle() { return this._endAngle; }
     set EndAngle(value) { this._endAngle = value; }
     get Angle() { return this.EndAngle - this.StartAngle; }
 
     constructor() {
         super();
-        this._endAngle = 0;
+        this._startAngle = this._endAngle = 0;
+        this._isBusy = this._isDragging = false;
+        this._offset = 0;
     }
 
     Draw() {
+        this._offset = Model.CurrentPos;
+
         super.Draw();
         super._DrawCircle();
-        this._DrawSector();
-        this._DrawArrow();
+        this._DrawSelectedSector();
+        super._DrawArrow(this.StartAngle, this.EndAngle, -this.ToUnits(8), '#969696');
+        if (this._isDragging) {
+            const height = this.ToUnits(10);
+            const font = `bold ${height}px arial`;
+            super._DrawText(-this.Radius, -this.Radius + this.ToUnits(10), `${this.Angle}°`, font, 'left');
+        }
         super._DrawBorder();
     }
 
-    Clear() {
-        this._endAngle = 0;
-    }
-
-    _DrawSector() {
+    _DrawSelectedSector() {
         if (this.Angle === 0) {
             return;
         }
 
-        super._DrawSector(this.StartAngle + 90, this.EndAngle + 90);
+        super._DrawSector(this.StartAngle, this.EndAngle);
     }
 
-    _DrawArrow() {
-        if (Math.abs(this.Angle) < 10) {
+    StartMovementAsync() {
+        if (this.Angle === 0)
+            return false;
+
+        this._isBusy = true;
+        Model.RotateAsync(this.Angle);
+        Model.CurrentPos = 0;
+        return true;
+    }
+
+    Clear() {
+        this._isBusy = false;
+        this._isDragging = false;
+        this.StartAngle = this.EndAngle = 0;
+        this._offset = 0;
+        Model.CurrentPos = 0;
+    }
+
+    ToAngle(point) {
+        const startX = this.Radius;
+        const startY = 0;
+        const cos = (point.x * startX + point.y * startY) /
+            (Math.sqrt(point.x * point.x + point.y * point.y) * Math.sqrt(startX * startX + startY * startY));
+        let radians = Math.acos(cos);
+
+        if (point.y < 0) {
+            if (point.x < 0) {
+                radians = 2 * Math.PI - radians;
+            } else {
+                radians = 3 * Math.PI / 2 + (Math.PI / 2 - radians);
+            }
+        }
+
+        return toDegrees(radians);
+    }
+}
+
+class Rotate90Drawer extends RotateDrawer {
+    get StartAngle() {
+        if (this._startQuadrant < 0 || this._endQuadrant < 0) {
+            return 0;
+        }
+
+        let angle;
+        if (this.IsClockWise) {
+            angle = (this._startQuadrant === 3 && this._endQuadrant === 0 ? -90 : this._startQuadrant * 90) + this._offset;
+        } else {
+            angle = this._startQuadrant * 90 + 90 + this._offset;
+        }
+
+        return angle;
+    }
+    set StartAngle(value) {}
+    get EndAngle() {
+        if (this._startQuadrant < 0 || this._endQuadrant < 0) {
+            return 0;
+        }
+
+        let angle;
+        if (this.IsClockWise) {
+            angle = this._endQuadrant * 90 + 90;
+        } else {
+            angle = this._startQuadrant === 0 && this._endQuadrant === 3 ? -90 : this._endQuadrant * 90;
+        }
+
+        return angle;
+    }
+    set EndAngle(value) {}
+    get IsClockWise() {
+        if (this._startQuadrant === this._endQuadrant) {
+            return this._isClockWise;
+        }
+        if (this._startQuadrant === 0 && this._endQuadrant === 3) {
+            return false;
+        }
+        if (this._startQuadrant === 3 && this._endQuadrant === 0) {
+            return true;
+        }
+
+        return this._endQuadrant >= this._startQuadrant;
+    }
+    get PreviousPoint() { return this._previousPoint; }
+    set PreviousPoint(value) { this._previousPoint = value; }
+
+    constructor() {
+        super();
+        this._startQuadrant = -1;
+        this._endQuadrant = -1;
+        this._isClockWise = false;
+    }
+
+    OnDown(event) {
+        if (this._isBusy) {
             return;
         }
 
-        super._DrawArrow(this.StartAngle + 90, this.EndAngle + 90, -this.ToUnits(8), '#969696');
+        let point = this._Transform(event);
+        this.PreviousPoint = point;
+        this._isClockWise = true;
+        const quadrant = this._GetQuadrant(point);
+        if (quadrant < 0) {
+            this.Clear();
+            return;
+        }
 
-        const height = this.ToUnits(10);
-        const font = `bold ${height}px arial`;
-        super._DrawText(-this.Radius, -this.Radius + this.ToUnits(10), `${this.EndAngle}°`, font, 'left');
+        this._startQuadrant = this._endQuadrant = quadrant;
+        this._isDragging = true;
+        this.Draw();
+    }
+
+    OnMove(event) {
+        if (!this._isDragging) {
+            return;
+        }
+
+        let point = this._Transform(event);
+        if (!this._IsSibling(this._startQuadrant, point)) {
+            this.Clear();
+        } else {
+            this._endQuadrant = this._GetQuadrant(point);
+            const equals = point.x === this.PreviousPoint.x && point.y === this.PreviousPoint.y;
+            if (this._startQuadrant === this._endQuadrant && !equals) {
+                const endAngle = this.ToAngle(point);
+                const startAngle = this.ToAngle(this.PreviousPoint);
+                if (Math.abs(endAngle - startAngle) > 3) {
+                    this._isClockWise = endAngle > startAngle;
+                    this.PreviousPoint = point;
+                }
+            }
+        }
+        this.Draw();
+    }
+
+    OnUp(event) {
+        this._isDragging = false;
+        this.StartMovementAsync();
+    }
+
+    OnLeave(event) {
+        if (this._isDragging) {
+            this.Clear();
+            this.Draw();
+        }
+    }
+
+    Clear() {
+        super.Clear();
+        this._startQuadrant = this._endQuadrant = -1;
+    }
+
+    _GetQuadrant(point) {
+        if (!this._IsInsideCircle(point)) {
+            return -1;
+        }
+
+        const angle = toRadians(this.ToAngle(point));
+        const sin = Math.sin(angle);
+        const cos = Math.cos(angle);
+        if (sin === 0 || cos === 0) {
+            return -1;
+        }
+
+        if (cos > 0) {
+            return sin > 0 ? 0 : 3;
+        } else {
+            return sin > 0 ? 1 : 2;
+        }
+    }
+
+    _IsSibling(quadrant, point) {
+        const other = this._GetQuadrant(point);
+        return other === quadrant || other === this._Prev(quadrant) || other === this._Next(quadrant);
+    }
+
+    _Prev(quadrant) {
+        return quadrant === 0 ? 3 : quadrant - 1;
+    }
+
+    _Next(quadrant) {
+        return quadrant === 3 ? 0 : quadrant + 1;
+    }
+}
+
+class FreeMovementDrawer extends RotateDrawer {
+    get StartAngle() { return this._startAngle + this._offset; }
+    set StartAngle(value) { this._startAngle = Math.round(value); }
+    get EndAngle() { return this._endAngle; }
+    set EndAngle(value) { this._endAngle = Math.round(value); }
+
+    constructor() {
+        super();
+    }
+
+    OnDown(event) {
+        if (this._isBusy) {
+            return;
+        }
+
+        let point = this._Transform(event);
+        if (!this._IsInsideCircle(point)) {
+            this.Clear();
+            return;
+        }
+
+        this.StartAngle = this.EndAngle = this.ToAngle(point);
+        this._isDragging = true;
+        this.Draw();
+    }
+
+    OnMove(event) {
+        if (!this._isDragging) {
+            return;
+        }
+
+        let point = this._Transform(event);
+        if (!this._IsInsideCircle(point)) {
+            this.Clear();
+        } else {
+            this.EndAngle = this.ToAngle(point);
+            if (Math.abs(this.EndAngle - this.StartAngle) > 180) {
+                if (this.StartAngle > 180) {
+                    this.EndAngle += 360;
+                } else {
+                    this.EndAngle -= 360;
+                }
+            }
+        }
+        this.Draw();
+    }
+
+    OnUp(event) {
+        this._isDragging = false;
+        this.StartMovementAsync();
+    }
+
+    OnLeave(event) {
+        if (this._isDragging) {
+            this.Clear();
+            this.Draw();
+        }
     }
 }
 // #endregion
@@ -999,7 +1230,7 @@ class TableModel {
     get CurrentDrawer() { return this.Drawers[this.CurrentMode]; }
 
     constructor() {
-        this.Drawers.push(new AutoDrawer(), new ManualDrawer(), new NonstopDrawer(), new VideoDrawer(), new RotateDrawer());
+        this.Drawers.push(new AutoDrawer(), new ManualDrawer(), new NonstopDrawer(), new VideoDrawer(), new Rotate90Drawer(), new FreeMovementDrawer());
     }
 
     async ConnectAsync() {
@@ -1029,7 +1260,6 @@ class TableModel {
 
             switch (this.CurrentMode) {
                 case Mode.Auto:
-                    Show(Element('ROTATE_BUTTONS'), false);
                     Show(Element('INCR_BUTTONS'), false);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
@@ -1041,7 +1271,6 @@ class TableModel {
                     Show(Element('DELAY'), true);
                     break;
                 case Mode.Manual:
-                    Show(Element('ROTATE_BUTTONS'), false);
                     Show(Element('INCR_BUTTONS'), false);
                     Show(Element('PHOTO_BUTTONS'), true);
                     Show(Element('STEPS'), false);
@@ -1053,7 +1282,6 @@ class TableModel {
                     Show(Element('DELAY'), false);
                     break;
                 case Mode.Nonstop: 
-                    Show(Element('ROTATE_BUTTONS'), false);
                     Show(Element('INCR_BUTTONS'), true);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
@@ -1065,7 +1293,6 @@ class TableModel {
                     Show(Element('DELAY'), false);
                     break;
                 case Mode.Video:
-                    Show(Element('ROTATE_BUTTONS'), false);
                     Show(Element('INCR_BUTTONS'), true);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
@@ -1077,7 +1304,7 @@ class TableModel {
                     Show(Element('DELAY'), false);
                     break;
                 case Mode.Rotate:
-                    Show(Element('ROTATE_BUTTONS'), true);
+                case Mode.FreeMovement:
                     Show(Element('INCR_BUTTONS'), false);
                     Show(Element('PHOTO_BUTTONS'), false);
                     Show(Element('STEPS'), false);
@@ -1101,7 +1328,6 @@ class TableModel {
             Show(Element('DELAY'), true);
             Show(Element('MODE_INFO'), false);
             Show(Element('CANVAS'), false);
-            Show(Element('ROTATE_BUTTONS'), false);
             Show(Element('INCR_BUTTONS'), false);
             Show(Element('PHOTO_BUTTONS'), false);
             Show(Element('BTN_STOP'), false);
@@ -1147,6 +1373,8 @@ class TableModel {
                 return 'Видео';
             case Mode.Rotate:
                 return 'Поворот 90°';
+            case Mode.FreeMovement:
+                return 'Свободное перемещение';
         }
     }
 
@@ -1161,6 +1389,7 @@ class TableModel {
             case Mode.Video:
                 return Service.Commands.RunVideoMode;
             case Mode.Rotate:
+            case Mode.FreeMovement:
                 return Service.Commands.RunFreeMovement;
         }
     }
@@ -1229,6 +1458,7 @@ class TableModel {
                     Model.IsPerformingManualStep = false;
                     break;
                 case Mode.Rotate:
+                case Mode.FreeMovement:
                     Model.CurrentPos = 0;
                     Model.CurrentDrawer.Clear();
                     Model.CurrentDrawer.Draw();
@@ -1251,6 +1481,7 @@ class TableModel {
                     Model.IsRunning = false;
                     break;
                 case Mode.Rotate:
+                case Mode.FreeMovement:
                     if (!Service.IsVersion3) {
                         Model.CurrentDrawer.Draw();
                         Model.IsRotating = false;
@@ -1582,23 +1813,9 @@ class TableModel {
         }
     }
 
-    async LeftAsync() {
-        if (!Model.IsRotating) {
-            await this.RotateAsync(90);
-        }
-    }
-
-    async RightAsync() {
-        if (!Model.IsRotating) {
-            await this.RotateAsync(-90);
-        }
-    }
-
     async RotateAsync(angle) {
         Model.IsRotating = true;
         this.ListeningHandler = this.#ListeningHandler;
-        Model.CurrentDrawer.EndAngle = angle;
-        Model.CurrentDrawer.Draw();
         if (!await Service.SendCommandAsync(Service.Commands.FreeMovement + angle)) {
             processError('Стол не может выполнить команду');
 
