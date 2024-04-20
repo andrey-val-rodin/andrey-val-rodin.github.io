@@ -894,6 +894,10 @@ class RotateDrawer extends BaseDrawer {
     }
 
     ToAngle(point) {
+        if (point.x ===  0 && point.y === 0) {
+            return 0;
+        }
+
         const startX = this.Radius;
         const startY = 0;
         const cos = (point.x * startX + point.y * startY) /
