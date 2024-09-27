@@ -56,6 +56,9 @@
         .ribbon-text {
             font-size: 1.3rem;
         }
+        .small-ribbon-text {
+            font-size: 1rem;
+        }
         .ribbon
         {
             width: 100%;
@@ -158,10 +161,10 @@
         
     <div class="page pageTable">
         <div class="ribbon">
-            <button class="ribbon-button" type="button" title="Disconnect" onclick="Service.Disconnect()">
+            <button class="ribbon-button" type="button" title="Disconnect" onclick="processError('Соединение со столом разорвано пользователем')">
                 <img title="Назад" src="icons/arrow.png">
             </button>
-            <label class="ribbon-text">Фотостол</label>
+            <label class="ribbon-text" id="RIBBON_TEXT">Фотостол</label>
         </div>
         <div>
             <p>
@@ -312,11 +315,9 @@ window.onload = () => {
         }
 
         if ('onavailabilitychanged' in navigator.bluetooth) {
-            navigator.bluetooth.addEventListener('availabilitychanged', async (event) => {
+            navigator.bluetooth.addEventListener('availabilitychanged', (event) => {
                 if (!event.value) {
-                    Show(Element('ERR'), true);
                     processError('Bluetooth недоступен');
-                    Service.Disconnect();
                 }
             });
         }
@@ -359,8 +360,7 @@ const Enable = (e, enable) => { e.disabled = !enable };
 function processError(message) {
     Service.Disconnect();
     gotoConnectionPage();
-    Model.IsRunning = false;
-    Model.IsSoftStopping = false;
+    Model.Reset();
     Show(Element('ERR'), true);
     Element('ERR').innerText = message;
 }
@@ -1247,6 +1247,17 @@ class TableModel {
         this.Drawers.push(new AutoDrawer(), new ManualDrawer(), new NonstopDrawer(), new VideoDrawer(), new Rotate90Drawer(), new FreeMovementDrawer());
     }
 
+    Reset() {
+        this.#isRunning = false;
+        this.#isSoftStopping = false;
+        this.#isRotating = false;
+        this.#isPerformingManualStep = false;
+        this.#deviating = Deviate.None;
+        this.#currentStep = 0;
+        this.#currentPos = 0;
+        this.CurrentDrawer.Clear();
+    }
+
     async ConnectAsync() {
         Show(Element('ERR'), false);
         Show(Element('PROGRESS'), true);
@@ -1257,6 +1268,7 @@ class TableModel {
         Show(Element('PROGRESS'), false);
         Enable(Element('CONNECT_BTN'), true);
         if (success) {
+            Element('RIBBON_TEXT').innerHTML = Service.Id !== null ? 'Фотостол\xa0\xa0<span class="small-ribbon-text">' + Service.Id + '</span>' : 'Фотостол';
             gotoTablePage();
         }
     }
@@ -1900,7 +1912,9 @@ class TableModel {
         const Refuse = () => {
             // Restore old frequency
             const oldFrequency = getCookieValue('Nfreq');
-            Model.NonstopFrequency = oldFrequency;
+            if (oldFrequency) {
+                Model.NonstopFrequency = oldFrequency;
+            }
             Element('FREQ_SLIDER').value = Model.NonstopFrequency;
             Element('FREQ_VALUE').innerText = Model.NonstopFrequency.toFixed(2);
         }
@@ -1939,7 +1953,9 @@ class TableModel {
         const Refuse = () => {
             // Restore old speed
             const oldSpeed = getCookieValue('Vpwm');
-            Model.VideoSpeed = oldSpeed;
+            if (oldSpeed) {
+                Model.VideoSpeed = oldSpeed;
+            }
         }
 
         if (Service.Busy) {
@@ -2047,6 +2063,7 @@ const Model = new TableModel();
 
 class BluetoothService {
     #isVersion3 = false;
+    #id = null;
     #connected = false;
     #device = null;
     #server = null;
@@ -2056,7 +2073,6 @@ class BluetoothService {
     #commandHandler = null;
     // callback to listen during running
     #listeningHandler = null;
-    #cancellation = false;
     #busy = false;
 
     //See https://github.com/andrey-val-rodin/RotatingTable.Xamarin/blob/master/RotatingTable.Xamarin/RotatingTable.Xamarin/Models/Tokens.cs
@@ -2078,6 +2094,7 @@ class BluetoothService {
         EstablishConn           : "ECONN",
         GetSteps                : "GET STEPS",
         Step                    : "STEP ",
+        GetMAC                  : "GET MAC",
         GetAcceleration         : "GET ACC",
         GetExposure             : "GET EXP",
         GetDelay                : "GET DELAY",
@@ -2116,22 +2133,17 @@ class BluetoothService {
     }
 
     get IsVersion3() { return this.#isVersion3; }
+    get Id() { return this.#id; }
     get Connected() { return this.#connected; }
     get Device() { return this.#device; }
     get Commands() { return this.#commands; }
-    get Cancellation() { return this.#cancellation; }
-    set Cancellation(value) { this.#cancellation = value; }
     get Busy() { return this.#busy; }
 
     async ConnectAsync(progress) {
-        this.Cancellation = false;
         let success = false;
         try {
             await this.#ConnectToDeviceAsync();
             if (!this.Device) {
-                return false;
-            }
-            if (this.Cancellation) {
                 return false;
             }
             progress.value = 25;
@@ -2140,15 +2152,9 @@ class BluetoothService {
                 processError('Характеристика не найдена');
                 return false;
             }
-            if (this.Cancellation) {
-                return false;
-            }
             progress.value = 50;
 
             if (!await this.#EstablishConnectionAsync()) {
-                return false;
-            }
-            if (this.Cancellation) {
                 return false;
             }
             progress.value = 60;
@@ -2156,16 +2162,13 @@ class BluetoothService {
             if (!await this.#CheckStatusAsync()) {
                 return false;
             }
-            if (this.Cancellation) {
-                return false;
-            }
             progress.value = 70;
 
             await this.#GetVersionAsync();
-            if (this.Cancellation) {
-                return false;
-            }
             progress.value = 80;
+
+            await this.#GetMACAsync();
+            progress.value = 85;
 
             if (!await this.#SetConfigAsync()) {
                 return false;
@@ -2177,7 +2180,6 @@ class BluetoothService {
             processError(error.message);
         } finally {
             this.#connected = success;
-            this.Cancellation = false;
             if (!success) {
                 this.Disconnect();
             }
@@ -2188,9 +2190,11 @@ class BluetoothService {
 
     Disconnect() {
         if (this.Device) {
+            this.Device.removeEventListener('gattserverdisconnected', this.#OnDisconnected);
             this.Device.gatt.disconnect();
         }
         this.EndListening();
+        this.#server = null;
         this.#device = null;
         this.#connected = false;
         this.#updatesCharacteristic = null;
@@ -2203,9 +2207,11 @@ class BluetoothService {
                 optionalServices: [0xffe0]});
 
         this.#server = await this.Device.gatt.connect();
-        this.Device.addEventListener('gattserverdisconnected', (event) => {
-            processError('Соединение со столом разорвано');
-        });
+        this.Device.addEventListener('gattserverdisconnected', this.#OnDisconnected);
+    }
+
+    #OnDisconnected() {
+        processError('Соединение со столом разорвано');
     }
 
     async #LoadCharacteristicsAsync() {
@@ -2296,6 +2302,19 @@ class BluetoothService {
         this.#isVersion3 = (response > 3);
     }
 
+    async #GetMACAsync() {
+        const GetMAC = async () => {
+            return await Service.SendTokenAndAcceptStringAsync(Service.Commands.GetMAC);
+        };
+
+        let response = await GetMAC();
+        if (typeof response === 'string' || response instanceof String) {
+            // Is valid MAC address?
+            var regex = /^(([A-Fa-f0-9]{2}[:]){5}[A-Fa-f0-9]{2}?)+$/i;
+            this.#id = regex.test(response) ? response.toLowerCase().replaceAll(':', '') : null;
+        }
+    }
+
     async #EstablishConnectionAsync() {
         let response = await this.#SendTokenAsync(this.Commands.EstablishConn,
             [this.Commands.OK, this.Commands.Error, 'UNDEF']);
@@ -2308,6 +2327,7 @@ class BluetoothService {
                 return true;
             default:
                 processError('Стол уже соединён по Bluetooth');
+                return false;
         }
     }
 
@@ -2502,6 +2522,31 @@ class BluetoothService {
             }
 
             response = number;
+            return true;
+        }
+
+        this.#busy = true;
+        try {
+            if (DEBUG) console.log('%cCommand: ' + token, 'font-weight: bold;');
+            await this.#WriteAsync(token + terminator);
+            await this.#WaitUntilAsync(() => response !== null, 500);
+            return response;
+        } catch(error) {
+            return null;
+        } finally {
+            this.#commandHandler = null;
+            this.#busy = false;
+        }
+    }
+
+    async SendTokenAndAcceptStringAsync(token) {
+        let response = null;
+        this.#commandHandler = (event) => {
+            const str = decoder.decode(event.target.value);
+            const text = str.replace(terminator, '');
+            LOG_INCOMING_TOKENS('[CommandHandler] ->', text);
+
+            response = text;
             return true;
         }
 
