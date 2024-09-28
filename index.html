@@ -1983,7 +1983,6 @@ class TableModel {
 
     ConvertAcceleration(value) {
         return this.#ReverseIndex(10, value - 1) + 1;
-
     }
 
     ReverseStepsIndex(value) {
@@ -2392,7 +2391,7 @@ class BluetoothService {
         Element('ACC_SLIDER').value = Model.Fluency;
         Element('ACC_VALUE').innerText = Model.Fluency;
 
-        setCookieValue('Acceleration', Model.Fluency);
+        setCookieValue('Acceleration', acceleration);
         return true;
     }
 
