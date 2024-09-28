@@ -332,7 +332,7 @@ function setMode() {
     if (mode) {
         index = parseInt(mode);
     }
-    if (index < Mode.First || index > Mode.Last) {
+    if (isNaN(index) || index < Mode.First || index > Mode.Last) {
         index = Mode.Auto;
     }
     Element('SELECT_MODE').selectedIndex = index;
@@ -1135,7 +1135,9 @@ class FreeMovementDrawer extends RotateDrawer {
 
 class TableModel {
     #step = 10;
+    #prevStep = 10;
     #effectiveStepCount = 24;
+    #prevEffectiveStepCount = 24;
     #maxEffectiveStepCount = 24;
     #fluency = 4;
     #exposure = 100;
@@ -1223,6 +1225,7 @@ class TableModel {
     get IsPerformingManualStep() { return this.#isPerformingManualStep; }
     set IsPerformingManualStep(value) { this.#isPerformingManualStep = value; }
     get PreviousVideoSpeed() { return this.#previousVideoSpeed; }
+    set PreviousVideoSpeed(value) {this.#previousVideoSpeed = value; }
     get Deviating() { return this.#deviating; }
     set Deviating(value) { this.#deviating = value; }
     get IsSpeedEnabled() { return this.#isSpeedEnabled; }
@@ -1237,8 +1240,6 @@ class TableModel {
         Element('SPEED_SLIDER').value = this.ToVideoSliderPos(value);
         Element('SPEED_VALUE').innerText = this.ToVideoSpeed(Element('SPEED_SLIDER').value);
     }
-    get PreviousVideoSpeed() { return this.#prevSpeed; }
-    set PreviousVideoSpeed(value) {this.#prevSpeed = value; }
 
     get Drawers() { return this.#drawers; }
     get CurrentDrawer() { return this.Drawers[this.CurrentMode]; }
@@ -1579,6 +1580,7 @@ class TableModel {
             this.HighVideoSpeed = to;
             this.LowVideoSpeed = from;
             this.VideoSpeed = value;
+            this.#prevSpeed = value;
         } else {
             this.IsSpeedEnabled = false;
             this.HighVideoSpeed = 255;
@@ -1854,15 +1856,19 @@ class TableModel {
 
     ChangeSteps(value) {
         const ReflectChanges = () => {
-            value = this.ReverseStepsIndex(Steps.findIndex((e) => e === Model.StepCount));
-            Element('STEPS_SLIDER').value = value;
+            Model.Step = this.#prevStep;
+            Model.EffectiveStepCount = this.#prevEffectiveStepCount;
+
+            Element('STEPS_SLIDER').value = Model.Step;
             Element('STEPS_VALUE').innerText = Model.Degrees;
             Element('EFF_STEPS_SLIDER').value = Model.EffectiveStepCount;
             Element('EFF_STEPS_VALUE').innerText = Model.EffectiveStepCount;
         }
         const Set = (value) => {
             Model.Step = Model.ReverseStepsIndex(Steps.findIndex((e) => e == value));
+            Model.#prevStep = Model.Step;
             Model.EffectiveStepCount = Model.StepCount;
+            Model.#prevEffectiveStepCount = Model.EffectiveStepCount;
             setCookieValue('Steps', Model.StepCount);
             setCookieValue('EffectiveSteps', Model.EffectiveStepCount);
             ReflectChanges();
@@ -1889,13 +1895,18 @@ class TableModel {
             Element('EFF_STEPS_VALUE').innerText = Model.EffectiveStepCount;
         }
         const Set = (value) => {
-            Model.EffectiveStepCount = value;
+            Model.EffectiveStepCount = parseInt(value);
+            Model.#prevEffectiveStepCount = Model.EffectiveStepCount;
             setCookieValue('EffectiveSteps', value);
-            ReflectChanges();
         }
         const Refuse = () => {
             // Restore old steps
             ReflectChanges();
+        }
+
+        if (Service.Busy) {
+            Refuse();
+            return;
         }
 
         Service.SendCommandAsync(`${Service.Commands.SetSteps} ${Model.StepCount} ${value}`)
@@ -1904,6 +1915,10 @@ class TableModel {
     }
 
     async ChangeNonstopSpeedAsync(value) {
+        const ReflectChanges = () => {
+            Element('FREQ_SLIDER').value = Model.NonstopFrequency;
+            Element('FREQ_VALUE').innerText = Model.NonstopFrequency.toFixed(2);
+        }
         const SetAsync = async (value) => {
             if (!await Model.#ConformNonstopFrequencyAsync()) {
                 Refuse();
@@ -1911,12 +1926,7 @@ class TableModel {
         }
         const Refuse = () => {
             // Restore old frequency
-            const oldFrequency = getCookieValue('Nfreq');
-            if (oldFrequency) {
-                Model.NonstopFrequency = oldFrequency;
-            }
-            Element('FREQ_SLIDER').value = Model.NonstopFrequency;
-            Element('FREQ_VALUE').innerText = Model.NonstopFrequency.toFixed(2);
+            ReflectChanges();
         }
 
         if (Service.Busy) {
@@ -1934,8 +1944,9 @@ class TableModel {
             return false;
 
         const value = await Service.SendTokenAndAcceptNumberAsync(Service.Commands.GetRealNonstopFrequency);
-        if (value === null)
+        if (value === null) {
             return false;
+        }
 
         Model.NonstopFrequency = value;
         setCookieValue('Nfreq', Model.NonstopFrequency);
@@ -1946,16 +1957,18 @@ class TableModel {
     }
 
     async ChangeVideoSpeedAsync(value) {
+        const ReflectChanges = () => {
+            // Setting VideoSpeed property updates SPEED_SLIDER and SPEED_VALUE elements
+            Model.VideoSpeed = Model.#prevSpeed;
+        }
         const Set = (value) => {
             Model.VideoSpeed = Model.ToVideoSpeed(value);
+            Model.#prevSpeed = Model.VideoSpeed;
             setCookieValue('Vpwm', this.VideoSpeed);
         }
         const Refuse = () => {
             // Restore old speed
-            const oldSpeed = getCookieValue('Vpwm');
-            if (oldSpeed) {
-                Model.VideoSpeed = oldSpeed;
-            }
+            ReflectChanges();
         }
 
         if (Service.Busy) {
@@ -1987,9 +2000,8 @@ class TableModel {
             Element('ACC_VALUE').innerText = Model.Fluency;
         }
         const Set = (value) => {
-            Model.Fluency = value;
+            Model.Fluency = parseInt(value);
             setCookieValue('Acceleration', value);
-            ReflectChanges();
         };
         const Refuse = () => {
             // Restore old acc
@@ -2012,9 +2024,8 @@ class TableModel {
             Element('EXP_VALUE').innerText = Model.Exposure;
         }
         const Set = (value) => {
-            Model.Exposure = value;
+            Model.Exposure = parseInt(value);
             setCookieValue('Exposure', value);
-            ReflectChanges();
         }
         const Refuse = () => {
             // Restore old exp
@@ -2038,9 +2049,8 @@ class TableModel {
             Element('DELAY_VALUE').innerText = Model.Delay;
         }
         const Set = (value) => {
-            Model.Delay = value;
+            Model.Delay = parseInt(value);
             setCookieValue('Delay', value);
-            ReflectChanges();
         };
         const Refuse = () => {
             // Restore old delay
@@ -2332,19 +2342,21 @@ class BluetoothService {
     }
 
     async #SetConfigAsync() {
-        return await this.#SetStepsAsync(parseInt(getCookieValue('Steps')), parseInt(getCookieValue('EffectiveSteps'))) &&
-            await this.#SetAccelerationAsync(parseInt(getCookieValue('Acceleration'))) &&
-            await this.#SetExposureAsync(parseInt(getCookieValue('Exposure'))) &&
-            await this.#SetDelayAsync(parseInt(getCookieValue('Delay'))) &&
-            await this.#SetVideoPWMAsync(parseInt(getCookieValue('Vpwm'))) &&
-            await this.#SetNonstopFrequencyAsync(parseFloat(getCookieValue('Nfreq')));
+        return await this.#SetStepsAsync(getCookieValue('Steps'), getCookieValue('EffectiveSteps')) &&
+            await this.#SetAccelerationAsync(getCookieValue('Acceleration')) &&
+            await this.#SetExposureAsync(getCookieValue('Exposure')) &&
+            await this.#SetDelayAsync(getCookieValue('Delay')) &&
+            await this.#SetVideoPWMAsync(getCookieValue('Vpwm')) &&
+            await this.#SetNonstopFrequencyAsync(getCookieValue('Nfreq'));
     }
 
     async #SetStepsAsync(steps, effectiveSteps) {
-        if (steps === null || isNaN(steps)) {
+        steps = parseInt(steps);
+        if (isNaN(steps)) {
             steps = Model.StepCount;
         }
-        if (effectiveSteps === null || isNaN(effectiveSteps) || effectiveSteps > steps) {
+        effectiveSteps = parseInt(effectiveSteps);
+        if (isNaN(effectiveSteps) || effectiveSteps > steps) {
             effectiveSteps = steps;
         }
 
@@ -2353,7 +2365,7 @@ class BluetoothService {
             return false;
         }
 
-        Model.Step = Model.ReverseStepsIndex(Steps.findIndex((e) => e == steps));
+        Model.Step = Model.ReverseStepsIndex(Steps.findIndex((e) => e === steps));
         Model.EffectiveStepCount = effectiveSteps;
         Element('STEPS_SLIDER').value = Model.Step;
         Element('STEPS_VALUE').innerText = Model.Degrees;
@@ -2366,7 +2378,8 @@ class BluetoothService {
     }
 
     async #SetAccelerationAsync(acceleration) {
-        if (acceleration === null || isNaN(acceleration)) {
+        acceleration = parseInt(acceleration);
+        if (isNaN(acceleration)) {
             acceleration = Model.Acceleration;
         }
 
@@ -2384,7 +2397,8 @@ class BluetoothService {
     }
 
     async #SetExposureAsync(exposure) {
-        if (exposure === null || isNaN(exposure)) {
+        exposure = parseInt(exposure);
+        if (isNaN(exposure)) {
             exposure = Model.Exposure;
         }
 
@@ -2402,7 +2416,8 @@ class BluetoothService {
     }
 
     async #SetDelayAsync(delay) {
-        if (delay === null || isNaN(delay)) {
+        delay = parseInt(delay);
+        if (isNaN(delay)) {
             delay = Model.Delay;
         }
 
@@ -2420,7 +2435,8 @@ class BluetoothService {
     }
 
     async #SetVideoPWMAsync(videoPWM) {
-        if (videoPWM === null || isNaN(videoPWM)) {
+        videoPWM = parseInt(videoPWM);
+        if (isNaN(videoPWM)) {
             videoPWM = Model.VideoPWM;
         }
 
@@ -2439,17 +2455,18 @@ class BluetoothService {
         return true;
     }
 
-    async #SetNonstopFrequencyAsync(NonstopFrequency) {
-        if (NonstopFrequency === null || isNaN(NonstopFrequency)) {
-            NonstopFrequency = Model.NonstopFrequency;
+    async #SetNonstopFrequencyAsync(nonstopFrequency) {
+        nonstopFrequency = parseFloat(nonstopFrequency);
+        if (isNaN(nonstopFrequency)) {
+            nonstopFrequency = Model.NonstopFrequency;
         }
         
-        if (!await this.SendCommandAsync(`${this.Commands.SetNonstopFrequency} ${NonstopFrequency}`)) {
+        if (!await this.SendCommandAsync(`${this.Commands.SetNonstopFrequency} ${nonstopFrequency}`)) {
             processError('Не удалось передать столу параметры');
             return false;
         }
 
-        Model.NonstopFrequency = NonstopFrequency;
+        Model.NonstopFrequency = nonstopFrequency;
         setCookieValue('Nfreq', Model.NonstopFrequency);
         return true;
     }
