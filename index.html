@@ -2000,7 +2000,7 @@ class TableModel {
         }
         const Set = (value) => {
             Model.Fluency = parseInt(value);
-            setCookieValue('Acceleration', value);
+            setCookieValue('Acceleration', Model.Acceleration);
         };
         const Refuse = () => {
             // Restore old acc
