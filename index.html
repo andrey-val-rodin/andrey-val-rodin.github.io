@@ -2224,9 +2224,9 @@ class BluetoothService {
     }
 
     async #LoadCharacteristicsAsync() {
-        const service = await this.#server.getPrimaryService(0xffe0);
-        this.#updatesCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-        this.#writeCharacteristic   = await service.getCharacteristic('0000ffe2-0000-1000-8000-00805f9b34fb');
+        const service = await this.#server?.getPrimaryService(0xffe0);
+        this.#updatesCharacteristic = await service?.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+        this.#writeCharacteristic   = await service?.getCharacteristic('0000ffe2-0000-1000-8000-00805f9b34fb');
 
         if (!this.#updatesCharacteristic || !this.#writeCharacteristic) {
             return false;
