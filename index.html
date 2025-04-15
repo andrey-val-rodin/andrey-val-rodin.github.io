@@ -15,7 +15,9 @@
         .container {
 	        position: relative;
 	        overflow: hidden;
-	        height: 95vh;
+	        height: 100vh;
+            flex: 1;
+            margin: 8px;
         }
         .page {
             position: absolute;
@@ -132,7 +134,24 @@
             -ms-user-select: none;          /* Internet Explorer/Edge */
             user-select: none;              /* Non-prefixed version, currently
                                                supported by Chrome, Edge, Opera and Firefox */
-        }        
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .footer {
+            text-align: center;
+            color: gray;
+            font-size: 0.85rem;
+            margin: 0;
+            margin-bottom: 0.2rem;
+            a {
+                display: inline-block;
+                font-size: 0.85rem;
+            }
+        }
     </style>
 </head>
 <!-- Google tag (gtag.js) -->
@@ -157,127 +176,129 @@
             <p>
                 <label class="hidden" id="ERR"></label>
             </p>
-    </div>
-        
-    <div class="page pageTable">
-        <div class="ribbon">
-            <button class="ribbon-button" type="button" title="Disconnect" onclick="processError('Соединение со столом разорвано пользователем')">
-                <img title="Назад" src="icons/arrow.png">
-            </button>
-            <label class="ribbon-text" id="RIBBON_TEXT">Фотостол</label>
         </div>
-        <div>
-            <p>
-                <label class="hidden" id="ERROR"></label>
-            </p>
-            <p class="hidden" id="MODE_INFO">
-                <label class="bold">Режим: </label>
-                <label id="LABEL_INFO"></label>
-            </p>
-            <p>
-                <canvas class="hidden noselect" id="CANVAS" width="300rem" height="300rem"
-                        onpointerdown="Model.CurrentDrawer.OnDown(event)"
-                        onpointermove="Model.CurrentDrawer.OnMove(event)"
-                        onpointerup="Model.CurrentDrawer.OnUp(event)"
-                        onpointercancel="Model.CurrentDrawer.OnLeave(event)"
-                        onpointerout="Model.CurrentDrawer.OnLeave(event)"></canvas>
-            </p>
-            <select class="width center" id="SELECT_MODE" title="Режим" aria-label="Режим" onchange="Model.CurrentMode = this.selectedIndex">
-                <option>Авто</option>
-                <option>Ручной</option>
-                <option>Безостановочный</option>
-                <option>Видео</option>
-                <option>Поворот 90°</option>
-                <option>Свободное перемещение</option>
-            </select>
-            <p>
-                <button disabled class="width center" type="button" id="BTN_START" onclick="Model.RunAsync()">Старт</button>
-            </p>
-            <div class="width center" id="STEPS">
-                <p class="slider-labels">
-                    <label>Шаг съёмки</label>
-                    <Label id="STEPS_VALUE" class="bold">0</Label>
-                </p>
-                <input disabled type="range" id="STEPS_SLIDER" min="0" max="21" value="0" aria-label="Шаг съёмки" onchange="Model.ChangeSteps(this.value)" oninput="Model.Step = this.value; STEPS_VALUE.innerText = Model.Degrees; EFF_STEPS_VALUE.innerText = Model.EffectiveStepCount"/>
+            
+        <div class="page pageTable">
+            <div class="ribbon">
+                <button class="ribbon-button" type="button" title="Disconnect" onclick="processError('Соединение со столом разорвано пользователем')">
+                    <img title="Назад" src="icons/arrow.png">
+                </button>
+                <label class="ribbon-text" id="RIBBON_TEXT">Фотостол</label>
             </div>
-            <div class="width center" id="EFF_STEPS">
-                <p class="slider-labels">
-                    <label>Количество снимков</label>
-                    <Label id="EFF_STEPS_VALUE" class="bold">0</Label>
+            <div>
+                <p>
+                    <label class="hidden" id="ERROR"></label>
                 </p>
-                <input disabled type="range" id="EFF_STEPS_SLIDER" min="1" max="22" value="22" aria-label="Количество снимков" onchange="Model.ChangeEffectiveSteps(this.value)" oninput="EFF_STEPS_VALUE.innerText = this.value"/>
-            </div>
-            <div class="hidden width center" id="FREQ" class="slider">
-                <p class="slider-labels">
-                    <label id="FREQ_TITLE">Частота кадров</label>
-                    <Label id="FREQ_VALUE" class="bold">0.5</Label>
+                <p class="hidden" id="MODE_INFO">
+                    <label class="bold">Режим: </label>
+                    <label id="LABEL_INFO"></label>
                 </p>
-                <input disabled type="range" id="FREQ_SLIDER" min="0.5" max="3.0" step="0.001" value="0.5" aria-label="Частота кадров" onchange="Model.ChangeNonstopSpeedAsync(this.value)" oninput="FREQ_VALUE.innerText = parseFloat(this.value).toFixed(2)"/>
-            </div>
-            <div class="hidden width center" id="SPEED" class="slider">
-                <p class="slider-labels">
-                    <label>Скорость</label>
-                    <Label id="SPEED_VALUE" class="bold">1</Label>
+                <p>
+                    <canvas class="hidden noselect" id="CANVAS" width="300rem" height="300rem"
+                            onpointerdown="Model.CurrentDrawer.OnDown(event)"
+                            onpointermove="Model.CurrentDrawer.OnMove(event)"
+                            onpointerup="Model.CurrentDrawer.OnUp(event)"
+                            onpointercancel="Model.CurrentDrawer.OnLeave(event)"
+                            onpointerout="Model.CurrentDrawer.OnLeave(event)"></canvas>
                 </p>
-                <input disabled type="range" id="SPEED_SLIDER" list="tickmark" min="-1.0" max="1.0" step="0.001" value="0" aria-label="Скорость" onchange="Model.ChangeVideoSpeedAsync(this.value)" oninput="SPEED_VALUE.innerText = Model.ToVideoSpeed(this.value)"/>
-                <datalist id="tickmark">
-                    <option>-1</option>
-                    <option>0</option>
-                    <option>1</option>
-                </datalist>
-            </div>
-            <div class="width center" id="ACC" class="slider">
-                <p class="slider-labels">
-                    <label>Плавность</label>
-                    <Label id="ACC_VALUE" class="bold">1</Label>
+                <select class="width center" id="SELECT_MODE" title="Режим" aria-label="Режим" onchange="Model.CurrentMode = this.selectedIndex">
+                    <option>Авто</option>
+                    <option>Ручной</option>
+                    <option>Безостановочный</option>
+                    <option>Видео</option>
+                    <option>Поворот 90°</option>
+                    <option>Свободное перемещение</option>
+                </select>
+                <p>
+                    <button disabled class="width center" type="button" id="BTN_START" onclick="Model.RunAsync()">Старт</button>
                 </p>
-                <input disabled type="range" id="ACC_SLIDER" min="1" max="10" value="1" aria-label="Плавность" onchange="Model.ChangeAcc(this.value)" oninput="ACC_VALUE.innerText = this.value"/>
-            </div>
-            <div class="width center" id="EXPOSURE" class="slider">
-                <p class="slider-labels">
-                    <label>Экспозиция</label>
-                    <Label id="EXP_VALUE" class="bold">100</Label>
-                </p>
-                <input disabled type="range" id="EXP_SLIDER" min="1" max="30" value="1" aria-label="Экспозиция" onchange="Model.ChangeExp(this.value)" oninput="EXP_VALUE.innerText = this.value * 100"/>
-            </div>
-            <div class="width center" id="DELAY" class="slider">
-                <p class="slider-labels">
-                    <label>Задержка</label>
-                    <Label id="DELAY_VALUE" class="bold">0</Label>
-                </p>
-                <input disabled type="range" id="DELAY_SLIDER" min="0" max="50" value="0" aria-label="Задержка" onchange="Model.ChangeDelay(this.value)" oninput="DELAY_VALUE.innerText = this.value * 100"/>
-            </div>
-            <p>
-                <div class="hidden" id="INCR_BUTTONS">
-                    <p class="center width button-group noselect">
-                        <button class="width" id="BTN_DEC" type="button"
-                            onpointerdown="Model.BeginDeviateAsync(Deviate.Decrease)"
-                            onpointerup="Model.EndDeviate()"
-                            onpointerleave="Model.EndDeviate()">&lt;&lt;
-                        </button>
-                        <span></span>
-                        <button class="width" id="BTN_INC" type="button"
-                            onpointerdown="Model.BeginDeviateAsync(Deviate.Increase)"
-                            onpointerup="Model.EndDeviate()"
-                            onpointerleave="Model.EndDeviate()">&gt;&gt;
-                        </button>
+                <div class="width center" id="STEPS">
+                    <p class="slider-labels">
+                        <label>Шаг съёмки</label>
+                        <Label id="STEPS_VALUE" class="bold">0</Label>
                     </p>
+                    <input disabled type="range" id="STEPS_SLIDER" min="0" max="21" value="0" aria-label="Шаг съёмки" onchange="Model.ChangeSteps(this.value)" oninput="Model.Step = this.value; STEPS_VALUE.innerText = Model.Degrees; EFF_STEPS_VALUE.innerText = Model.EffectiveStepCount"/>
                 </div>
-            </p>
-            <p>
-                <div class="hidden" id="PHOTO_BUTTONS">
-                    <p class="center width button-group">
-                        <button class="width" id="BTN_PHOTO" type="button" onclick="Model.PhotoAsync()">Фото</button>
-                        <span></span>
-                        <button class="width" id="BTN_NEXT" type="button" onclick="Model.NextAsync()">Далее</button>
+                <div class="width center" id="EFF_STEPS">
+                    <p class="slider-labels">
+                        <label>Количество снимков</label>
+                        <Label id="EFF_STEPS_VALUE" class="bold">0</Label>
                     </p>
+                    <input disabled type="range" id="EFF_STEPS_SLIDER" min="1" max="22" value="22" aria-label="Количество снимков" onchange="Model.ChangeEffectiveSteps(this.value)" oninput="EFF_STEPS_VALUE.innerText = this.value"/>
                 </div>
-            </p>
-            <p>
-                <button class="hidden width center stop-button" type="button" id="BTN_STOP" class="stop-button" onclick="Model.StopAsync()">Выход</button>
-            </p>
+                <div class="hidden width center" id="FREQ" class="slider">
+                    <p class="slider-labels">
+                        <label id="FREQ_TITLE">Частота кадров</label>
+                        <Label id="FREQ_VALUE" class="bold">0.5</Label>
+                    </p>
+                    <input disabled type="range" id="FREQ_SLIDER" min="0.5" max="3.0" step="0.001" value="0.5" aria-label="Частота кадров" onchange="Model.ChangeNonstopSpeedAsync(this.value)" oninput="FREQ_VALUE.innerText = parseFloat(this.value).toFixed(2)"/>
+                </div>
+                <div class="hidden width center" id="SPEED" class="slider">
+                    <p class="slider-labels">
+                        <label>Скорость</label>
+                        <Label id="SPEED_VALUE" class="bold">1</Label>
+                    </p>
+                    <input disabled type="range" id="SPEED_SLIDER" list="tickmark" min="-1.0" max="1.0" step="0.001" value="0" aria-label="Скорость" onchange="Model.ChangeVideoSpeedAsync(this.value)" oninput="SPEED_VALUE.innerText = Model.ToVideoSpeed(this.value)"/>
+                    <datalist id="tickmark">
+                        <option>-1</option>
+                        <option>0</option>
+                        <option>1</option>
+                    </datalist>
+                </div>
+                <div class="width center" id="ACC" class="slider">
+                    <p class="slider-labels">
+                        <label>Плавность</label>
+                        <Label id="ACC_VALUE" class="bold">1</Label>
+                    </p>
+                    <input disabled type="range" id="ACC_SLIDER" min="1" max="10" value="1" aria-label="Плавность" onchange="Model.ChangeAcc(this.value)" oninput="ACC_VALUE.innerText = this.value"/>
+                </div>
+                <div class="width center" id="EXPOSURE" class="slider">
+                    <p class="slider-labels">
+                        <label>Экспозиция</label>
+                        <Label id="EXP_VALUE" class="bold">100</Label>
+                    </p>
+                    <input disabled type="range" id="EXP_SLIDER" min="1" max="30" value="1" aria-label="Экспозиция" onchange="Model.ChangeExp(this.value)" oninput="EXP_VALUE.innerText = this.value * 100"/>
+                </div>
+                <div class="width center" id="DELAY" class="slider">
+                    <p class="slider-labels">
+                        <label>Задержка</label>
+                        <Label id="DELAY_VALUE" class="bold">0</Label>
+                    </p>
+                    <input disabled type="range" id="DELAY_SLIDER" min="0" max="50" value="0" aria-label="Задержка" onchange="Model.ChangeDelay(this.value)" oninput="DELAY_VALUE.innerText = this.value * 100"/>
+                </div>
+                <p>
+                    <div class="hidden" id="INCR_BUTTONS">
+                        <p class="center width button-group noselect">
+                            <button class="width" id="BTN_DEC" type="button"
+                                onpointerdown="Model.BeginDeviateAsync(Deviate.Decrease)"
+                                onpointerup="Model.EndDeviate()"
+                                onpointerleave="Model.EndDeviate()">&lt;&lt;
+                            </button>
+                            <span></span>
+                            <button class="width" id="BTN_INC" type="button"
+                                onpointerdown="Model.BeginDeviateAsync(Deviate.Increase)"
+                                onpointerup="Model.EndDeviate()"
+                                onpointerleave="Model.EndDeviate()">&gt;&gt;
+                            </button>
+                        </p>
+                    </div>
+                </p>
+                <p>
+                    <div class="hidden" id="PHOTO_BUTTONS">
+                        <p class="center width button-group">
+                            <button class="width" id="BTN_PHOTO" type="button" onclick="Model.PhotoAsync()">Фото</button>
+                            <span></span>
+                            <button class="width" id="BTN_NEXT" type="button" onclick="Model.NextAsync()">Далее</button>
+                        </p>
+                    </div>
+                </p>
+                <p>
+                    <button class="hidden width center stop-button" type="button" id="BTN_STOP" class="stop-button" onclick="Model.StopAsync()">Выход</button>
+                </p>
+            </div>
         </div>
     </div>
+    <p class="footer">© ПСТ, 2025&nbsp;&nbsp;&nbsp;<a href="https://table-360.ru/" target="_blank">https://table-360.ru</a></p>
 </body>
 </html>
 <script>
